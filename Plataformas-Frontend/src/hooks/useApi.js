@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 
-const API_URL = 'http://localhost:3000/api'
+const API_URL = 'https://plataformas-backend.onrender.com/api'
 
 export function useApi() {
   const [loading, setLoading] = useState(false)
