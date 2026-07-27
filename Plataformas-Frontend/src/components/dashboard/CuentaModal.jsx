@@ -42,6 +42,7 @@ export default function CuentaModal({ isOpen, onClose, onSubmit, cuenta }) {
         const puestosExistentes = cuenta.usuarios_cuenta || cuenta.usuario_cuenta || []
         if (puestosExistentes.length > 0) {
           setPuestos(puestosExistentes.map(p => ({
+            id: p.id,
             id_usuario: p.id_usuario || '',
             pin: p.pin || '',
             vencimiento_usuario: p.vencimiento_usuario || '',
@@ -84,13 +85,16 @@ export default function CuentaModal({ isOpen, onClose, onSubmit, cuenta }) {
   }
 
   function agregarPuesto() {
-    setPuestos([...puestos, { 
-      id_usuario: '', 
-      pin: '', 
-      vencimiento_usuario: '', 
-      es_combo: false, 
-      valor_venta: '' 
-    }])
+    setPuestos((prev) => [
+      ...prev,
+      {
+        id_usuario: '',
+        pin: '',
+        vencimiento_usuario: '',
+        es_combo: false,
+        valor_venta: '',
+      },
+    ])
   }
 
   function eliminarPuesto(index) {
@@ -110,6 +114,16 @@ export default function CuentaModal({ isOpen, onClose, onSubmit, cuenta }) {
 
     setIsLoading(true)
 
+    const puestosPayload = puestos.map((p) => ({
+      ...(p.id ? { id: p.id } : {}),
+      id_cuenta: cuenta?.id || null,
+      id_usuario: p.id_usuario || null,
+      pin: p.pin || null,
+      vencimiento_usuario: p.vencimiento_usuario || null,
+      es_combo: p.es_combo || false,
+      valor_venta: parseFloat(p.valor_venta) || 0,
+    }))
+
     const cuentaData = {
       correo: correo.trim(),
       id_plataforma: idPlataforma,
@@ -117,14 +131,9 @@ export default function CuentaModal({ isOpen, onClose, onSubmit, cuenta }) {
       precio_costo: parseFloat(precioCosto) || 0,
       fecha_vencimiento: fechaVencimiento || null,
       notas: notas || null,
-      // 🎯 PUESTOS incluidos en el mismo envío
-      puestos: puestos.map(p => ({
-        id_usuario: p.id_usuario || null,
-        pin: p.pin || null,
-        vencimiento_usuario: p.vencimiento_usuario || null,
-        es_combo: p.es_combo || false,
-        valor_venta: parseFloat(p.valor_venta) || 0
-      }))
+      puestos: puestosPayload,
+      usuarios_cuenta: puestosPayload,
+      usuario_cuenta: puestosPayload,
     }
 
     if (contrasena.trim()) {

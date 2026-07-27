@@ -1,9 +1,13 @@
 import { useState } from 'react'
+import { useApi } from '../../hooks/useApi'
 
 export default function CuentaCard({ cuenta, clientes, onEditPuesto, onDeletePuesto, onEditCuenta, onDeleteCuenta,onNewPuesto }) {
   const [showPassword, setShowPassword] = useState(false)
   const [copiedEmail, setCopiedEmail] = useState(false)
   const [copiedPass, setCopiedPass] = useState(false)
+  const [loadingPassword, setLoadingPassword] = useState(false)
+  const [passwordValue, setPasswordValue] = useState('')
+  const { request } = useApi()
 
   async function copiarAlPortapapeles(texto, tipo) {
     try {
@@ -31,6 +35,33 @@ export default function CuentaCard({ cuenta, clientes, onEditPuesto, onDeletePue
         setCopiedPass(true)
         setTimeout(() => setCopiedPass(false), 2000)
       }
+    }
+  }
+
+  async function fetchPassword() {
+    if (passwordValue) {
+      return passwordValue
+    }
+
+    if (!cuenta?.id) return ''
+
+    setLoadingPassword(true)
+    const { data, error } = await request(`/cuentas/${cuenta.id}/contrasena`)
+    setLoadingPassword(false)
+
+    if (error) {
+      console.error('Error fetching password:', error)
+      return ''
+    }
+
+    setPasswordValue(data?.contrasena || '')
+    return data?.contrasena || ''
+  }
+
+  async function handleCopyPassword() {
+    const password = await fetchPassword()
+    if (password) {
+      await copiarAlPortapapeles(password, 'password')
     }
   }
 
@@ -104,7 +135,7 @@ export default function CuentaCard({ cuenta, clientes, onEditPuesto, onDeletePue
           <div className="flex-1">
             <p className="text-xs text-gray-500 mb-1">Contraseña</p>
             <p className="text-sm font-mono text-yellow-400 tracking-wider">
-              {showPassword ? '************' : '••••••••••••'}
+              Contrasena: {cuenta.contrasena_recuperable ? cuenta.contrasena_recuperable : 'N/A'}
             </p>
             <p className="text-[10px] text-gray-600 mt-0.5">
               {showPassword ? 'La contraseña no se almacena en texto plano por seguridad' : 'Oculta'}
@@ -130,17 +161,12 @@ export default function CuentaCard({ cuenta, clientes, onEditPuesto, onDeletePue
               )}
             </button>
             
-            {/* Botón copiar contraseña (solo disponible si se conoce) */}
             <button
               type="button"
-              onClick={() => {
-                // En una implementación real, el backend podría devolver
-                // la contraseña desencriptada solo para copiar
-                // Por ahora mostramos un mensaje informativo
-                alert('Por seguridad, la contraseña debe ser gestionada directamente en el sistema. Use "Editar cuenta" para actualizarla.')
-              }}
-              className="p-2 text-gray-400 hover:text-yellow-400 hover:bg-yellow-400/10 rounded-lg transition-colors"
-              title="La contraseña no se almacena en texto plano"
+              onClick={handleCopyPassword}
+              disabled={loadingPassword}
+              className="p-2 text-gray-400 hover:text-yellow-400 hover:bg-yellow-400/10 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Copiar contraseña"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
@@ -185,6 +211,7 @@ export default function CuentaCard({ cuenta, clientes, onEditPuesto, onDeletePue
           </h4>
         </div> 
         <button
+            type="button"
             onClick={() => onNewPuesto?.(cuenta)}
             className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
         >

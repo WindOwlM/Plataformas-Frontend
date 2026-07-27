@@ -22,20 +22,35 @@ export default function CuentasList() {
 
   async function guardarCuenta(cuentaData) {
     if (cuentaEditando) {
-      // Edición
-      const { error } = await request(`/cuentas/${cuentaEditando.id}`, {
+      const result = await request(`/cuentas/${cuentaEditando.id}`, {
         method: 'PATCH',
         body: JSON.stringify(cuentaData),
       })
-      if (!error) await cargarCuentas()
+
+      if (!result.error) {
+        setCuentas((prev) =>
+          prev.map((cuenta) =>
+            cuenta.id === cuentaEditando.id
+              ? {
+                  ...cuenta,
+                  ...cuentaData,
+                  usuarios_cuenta: cuentaData.usuarios_cuenta || cuentaData.puestos || cuenta.usuarios_cuenta || cuenta.usuario_cuenta || [],
+                  usuario_cuenta: cuentaData.usuario_cuenta || cuentaData.puestos || cuenta.usuarios_cuenta || cuenta.usuario_cuenta || [],
+                }
+              : cuenta
+          )
+        )
+        await cargarCuentas()
+      }
     } else {
-      // Nueva
-      const { data, error } = await request('/cuentas/crear', {
+      const result = await request('/cuentas/crear', {
         method: 'POST',
         body: JSON.stringify(cuentaData),
       })
-      if (data && !error) await cargarCuentas()
+
+      if (!result.error) await cargarCuentas()
     }
+
     setIsModalOpen(false)
     setCuentaEditando(null)
   }
@@ -55,6 +70,17 @@ export default function CuentasList() {
 
   function handleNewCuenta() {
     setCuentaEditando(null)
+    setIsModalOpen(true)
+  }
+
+  function handleNewPuesto(cuenta) {
+    setCuentaEditando({
+      ...cuenta,
+      usuarios_cuenta: [
+        ...(cuenta.usuarios_cuenta || cuenta.usuario_cuenta || []),
+        { id_usuario: '', pin: '', vencimiento_usuario: '', es_combo: false, valor_venta: '' },
+      ],
+    })
     setIsModalOpen(true)
   }
 
@@ -91,13 +117,13 @@ export default function CuentasList() {
               key={cuenta.id}
               cuenta={cuenta}
               onEditPuesto={(c, p) => {
-                // Abrir modal de cuenta con este puesto seleccionado
                 setCuentaEditando({ ...c, puestoEditando: p })
                 setIsModalOpen(true)
               }}
               onDeletePuesto={(c, p) => setConfirmDelete({ type: 'puesto', puesto: p })}
               onEditCuenta={handleEditCuenta}
               onDeleteCuenta={(c) => setConfirmDelete({ type: 'cuenta', cuenta: c })}
+              onNewPuesto={handleNewPuesto}
             />
           ))}
         </div>
