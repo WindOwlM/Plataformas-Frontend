@@ -116,7 +116,7 @@ function renderPlainText(text) {
           href={url}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-indigo-400 hover:text-indigo-300 underline break-all cursor-pointer"
+            className="inline-block px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs rounded-md transition-colors break-all my-1"
         >
           {url}
         </a>
