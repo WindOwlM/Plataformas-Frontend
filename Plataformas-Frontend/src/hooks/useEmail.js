@@ -48,7 +48,7 @@ export function useEmail() {
 
     for (const prov of providersToTry) {
       try {
-        const endpoint = prov === 'outlook' ? '/outlook/emails' : '/emails'
+        const endpoint = prov === 'outlook' ? '/outlook/outlook/emails' : '/emails'
         const response = await fetch(
           `${API_URL}${endpoint}?email=${encodeURIComponent(email)}&limit=2`,
           {
@@ -60,7 +60,6 @@ export function useEmail() {
         )
 
         const data = await response.json()
-        console.debug('useEmail - API response', { prov, endpoint, ok: response.ok, data })
 
         if (response.ok && data.success && data.emails && data.emails.length > 0) {
           const simplified = data.emails.map((msg) => {
@@ -86,7 +85,6 @@ export function useEmail() {
               provider: prov,
             }
           })
-          console.debug('useEmail - simplified emails', simplified)
           setEmails(simplified)
           setProvider(prov)
           setLoading(false)
