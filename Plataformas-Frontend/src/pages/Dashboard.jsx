@@ -139,32 +139,36 @@ export default function Dashboard() {
           )}
 
           {/* Lista de correos */}
-          {emails.length > 0 && (
-            <div className="space-y-4">
-              <p className="text-sm text-gray-400 mb-2">
-                Últimos {emails.length} correos encontrados:
-              </p>
-              {emails.map((msg) => (
-                <div
-                  key={msg.id}
-                  className="bg-gray-900 rounded-lg border border-gray-700 p-5 hover:border-gray-600 transition-colors"
-                >
-                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 mb-3">
-                    <span className="text-indigo-400 font-medium text-sm truncate">
-                      {msg.from}
-                    </span>
-                    <span className="text-indigo-400 font-medium text-sm truncate">
-                      {msg.to}
-                    </span>
-                    <span className="text-gray-500 text-xs whitespace-nowrap">
-                      {formatDate(msg.date)}
-                    </span>
-                  </div>
-                  <EmailBody content={msg.body} />
+          {emails.map((msg) => (
+            <div
+              key={msg.id}
+              className="bg-gray-900 rounded-lg border border-gray-700 p-5 hover:border-gray-600 transition-colors"
+            >
+              {/* Header del correo */}
+              <div className="flex flex-col gap-1 mb-3">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
+                  <span className="text-indigo-400 font-medium text-sm truncate">
+                    De: {msg.from}
+                  </span>
+                  <span className="text-gray-500 text-xs whitespace-nowrap">
+                    {formatDate(msg.date)}
+                  </span>
                 </div>
-              ))}
+                
+                {/* Destinatario */}
+                {msg.to && (
+                  <span className="text-emerald-400 text-xs">
+                    Para: {msg.to}
+                  </span>
+                )}
+              </div>
+
+              {/* Body */}
+              <div className="text-gray-300 text-sm leading-relaxed max-h-96 overflow-y-auto pr-2 custom-scrollbar space-y-0">
+                {msg.body}
+              </div>
             </div>
-          )}
+          ))}
 
           {/* Sin resultados */}
           {!loading && !error && emails.length === 0 && searchEmail && (

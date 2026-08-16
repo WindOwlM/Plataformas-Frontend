@@ -1,7 +1,7 @@
 import { useState } from 'react'
 
 const API_URL = import.meta.env.API_URL || 'https://plataformas-backend.onrender.com'
-const API_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY 
+const API_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
 
 const OUTLOOK_DOMAINS = [
   'outlook.com', 'outlook.es', 'outlook.co', 'hotmail.com', 'hotmail.es',
@@ -19,7 +19,6 @@ function detectProvider(email) {
   if (OUTLOOK_DOMAINS.includes(domain)) return 'outlook'
   if (GMAIL_DOMAINS.includes(domain)) return 'gmail'
   
-  // Fallback: si no reconoce, intenta Gmail primero (más común)
   return 'gmail'
 }
 
@@ -60,45 +59,26 @@ export function useEmail() {
         )
 
         const data = await response.json()
-        console.debug('useEmail - API response', { prov, endpoint, ok: response.ok, data })
-
 
         if (response.ok && data.success && data.emails && data.emails.length > 0) {
-          const simplified = data.emails.map((msg) => {
-            const normalizeTo = (t) => {
-              if (!t) return ''
-              if (Array.isArray(t)) {
-                return t
-                  .map((item) => (typeof item === 'string' ? item : (item.address || item.email || item.name || '')))
-                  .filter(Boolean)
-                  .join(', ')
-              }
-              if (typeof t === 'string') return t
-              if (typeof t === 'object') return t.address || t.email || t.name || JSON.stringify(t)
-              return String(t)
-            }
-
-            return {
-              id: msg.id,
-              from: msg.from,
-              date: msg.date,
-              to: normalizeTo(msg.to),
-              body: msg.body,
-              provider: prov,
-            }
-          })
+          const simplified = data.emails.map((msg) => ({
+            id: msg.id,
+            from: msg.from,
+            to: msg.to,              // ← AGREGADO
+            date: msg.date,
+            body: msg.body,
+            provider: prov,
+          }))
           setEmails(simplified)
           setProvider(prov)
           setLoading(false)
-          return // Éxito, salimos
+          return
         }
       } catch (err) {
         console.log(`Falló ${prov}:`, err.message)
-        // Continúa al siguiente provider
       }
     }
 
-    // Si ninguno funcionó
     setError(`No se pudieron obtener correos para ${email}. Asegúrate de que la cuenta esté conectada.`)
     setLoading(false)
   }
