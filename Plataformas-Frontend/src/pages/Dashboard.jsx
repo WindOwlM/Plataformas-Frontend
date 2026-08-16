@@ -165,7 +165,7 @@ export default function Dashboard() {
 
               {/* Body */}
               <div className="text-gray-300 text-sm leading-relaxed max-h-96 overflow-y-auto pr-2 custom-scrollbar space-y-0">
-                {msg.body}
+                <EmailBody content={msg.body} />
               </div>
             </div>
           ))}
