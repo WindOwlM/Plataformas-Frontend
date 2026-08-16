@@ -66,6 +66,7 @@ export function useEmail() {
             id: msg.id,
             from: msg.from,
             date: msg.date,
+            to: msg.to,
             body: msg.body,
             provider: prov,
           }))

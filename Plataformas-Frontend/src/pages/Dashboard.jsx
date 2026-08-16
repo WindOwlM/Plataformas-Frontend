@@ -6,56 +6,7 @@ import ClientesList from '../components/dashboard/ClientesList'
 import CuentasList from '../components/dashboard/CuentasList'
 import PlataformasList from '../components/dashboard/PlataformasList'
 import ProveedoresList from '../components/dashboard/ProveedoresList'
-
-// ─── Renderiza el body con links clickeables ───
-const renderEmailBody = (text) => {
-  if (!text) return null
-  const urlRegex = /(https?:\/\/[^\s<>"{}|\\^`\[\]]+)/g
-  const lines = text.split(/\r?\n/)
-
-  return lines.map((line, i) => {
-    const elements = []
-    let lastIndex = 0
-    let match
-
-    while ((match = urlRegex.exec(line)) !== null) {
-      if (match.index > lastIndex) {
-        elements.push(
-          <span key={`t-${i}-${lastIndex}`}>
-            {line.slice(lastIndex, match.index)}
-          </span>
-        )
-      }
-
-      const url = match[1]
-      elements.push(
-        <a
-          key={`l-${i}-${match.index}`}
-          href={url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-indigo-400 hover:text-indigo-300 underline break-all cursor-pointer"
-        >
-          {url}
-        </a>
-      )
-
-      lastIndex = match.index + match[0].length
-    }
-
-    if (lastIndex < line.length) {
-      elements.push(
-        <span key={`t-${i}-end`}>{line.slice(lastIndex)}</span>
-      )
-    }
-
-    return (
-      <div key={i} className={line.trim() === '' ? 'h-4' : ''}>
-        {elements.length > 0 ? elements : <span>&nbsp;</span>}
-      </div>
-    )
-  })
-}
+import EmailBody from '../components/EmailBody'
 
 export default function Dashboard() {
   const { adminProfile, signOut } = useAuth()
@@ -202,13 +153,14 @@ export default function Dashboard() {
                     <span className="text-indigo-400 font-medium text-sm truncate">
                       {msg.from}
                     </span>
+                    <span className="text-indigo-400 font-medium text-sm truncate">
+                      {msg.to}
+                    </span>
                     <span className="text-gray-500 text-xs whitespace-nowrap">
                       {formatDate(msg.date)}
                     </span>
                   </div>
-                  <div className="text-gray-300 text-sm leading-relaxed max-h-96 overflow-y-auto pr-2 custom-scrollbar space-y-0">
-                    {renderEmailBody(msg.body)}
-                  </div>
+                  <EmailBody content={msg.body} />
                 </div>
               ))}
             </div>
