@@ -60,6 +60,8 @@ export function useEmail() {
         )
 
         const data = await response.json()
+        console.debug('useEmail - API response', { prov, endpoint, ok: response.ok, data })
+
 
         if (response.ok && data.success && data.emails && data.emails.length > 0) {
           const simplified = data.emails.map((msg) => {
