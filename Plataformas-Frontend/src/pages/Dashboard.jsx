@@ -1,26 +1,72 @@
 import { useState } from 'react'
 import { useAuth } from '../hooks/useAuth'
-import { useGmail } from '../hooks/useGmail'
+import { useEmail } from '../hooks/useEmail'
 import StatCard from '../components/dashboard/StatCard'
 import ClientesList from '../components/dashboard/ClientesList'
 import CuentasList from '../components/dashboard/CuentasList'
 import PlataformasList from '../components/dashboard/PlataformasList'
 import ProveedoresList from '../components/dashboard/ProveedoresList'
-import { renderEmailBody } from '../utils/emailReader'
+
+// ─── Renderiza el body con links clickeables ───
+const renderEmailBody = (text) => {
+  if (!text) return null
+  const urlRegex = /(https?:\/\/[^\s<>"{}|\\^`\[\]]+)/g
+  const lines = text.split(/\r?\n/)
+
+  return lines.map((line, i) => {
+    const elements = []
+    let lastIndex = 0
+    let match
+
+    while ((match = urlRegex.exec(line)) !== null) {
+      if (match.index > lastIndex) {
+        elements.push(
+          <span key={`t-${i}-${lastIndex}`}>
+            {line.slice(lastIndex, match.index)}
+          </span>
+        )
+      }
+
+      const url = match[1]
+      elements.push(
+        <a
+          key={`l-${i}-${match.index}`}
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-indigo-400 hover:text-indigo-300 underline break-all cursor-pointer"
+        >
+          {url}
+        </a>
+      )
+
+      lastIndex = match.index + match[0].length
+    }
+
+    if (lastIndex < line.length) {
+      elements.push(
+        <span key={`t-${i}-end`}>{line.slice(lastIndex)}</span>
+      )
+    }
+
+    return (
+      <div key={i} className={line.trim() === '' ? 'h-4' : ''}>
+        {elements.length > 0 ? elements : <span>&nbsp;</span>}
+      </div>
+    )
+  })
+}
 
 export default function Dashboard() {
   const { adminProfile, signOut } = useAuth()
-  const { emails, loading, error, fetchEmails } = useGmail()
+  const { emails, loading, error, provider, fetchEmails } = useEmail()
   const [searchEmail, setSearchEmail] = useState('')
 
   const handleSearch = (e) => {
     e.preventDefault()
-    fetchEmails(searchEmail.trim())
+    fetchEmails(searchEmail.trim(), true) // true = fallback al otro si falla
   }
 
-
-
-  // Función para formatear fecha
   const formatDate = (dateString) => {
     if (!dateString) return 'Fecha desconocida'
     const date = new Date(dateString)
@@ -31,6 +77,27 @@ export default function Dashboard() {
       hour: '2-digit',
       minute: '2-digit',
     })
+  }
+
+  const getProviderBadge = (prov) => {
+    if (prov === 'outlook') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-blue-900/50 text-blue-300 border border-blue-700">
+          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M21.17 3.25Q21.5 3.25 21.76 3.5 22 3.74 22 4.08V19.92Q22 20.26 21.76 20.5 21.5 20.75 21.17 20.75H7.83Q7.5 20.75 7.24 20.5 7 20.26 7 19.92V17H2.83Q2.5 17 2.24 16.76 2 16.5 2 16.17V7.83Q2 7.5 2.24 7.24 2.5 7 2.83 7H7V4.08Q7 3.74 7.24 3.5 7.5 3.25 7.83 3.25M7 13.06L8.18 15.28H9.97L8 12.06L9.93 8.89H8.22L7.13 10.9L7.09 10.96L7.06 10.9L5.97 8.89H4.16L6.13 12.06L4.16 15.28H5.95M13.88 19.5V17H8.25V19.5M13.88 15.75V12.63H12V15.75M13.88 11.38V8.25H12V11.38M13.88 7V4.5H8.25V7M20.75 19.5V17H15.13V19.5M20.75 15.75V12.63H15.13V15.75M20.75 11.38V8.25H15.13V11.38M20.75 7V4.5H15.13V7Z"/>
+          </svg>
+          Outlook
+        </span>
+      )
+    }
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-red-900/50 text-red-300 border border-red-700">
+        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M20 18H18V9.25L12 13L6 9.25V18H4V6H5.2L12 10.25L18.8 6H20M20 4H4C2.89 4 2 4.89 2 6V18A2 2 0 004 20H20A2 2 0 0022 18V6C22 4.89 21.1 4 20 4Z"/>
+        </svg>
+        Gmail
+      </span>
+    )
   }
 
   return (
@@ -67,14 +134,15 @@ export default function Dashboard() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         
         {/* ═══════════════════════════════════════
-            SECCIÓN NUEVA: Buscador de Gmail
+            SECCIÓN: Buscador Universal de Correos
             ═══════════════════════════════════════ */}
         <section className="bg-gray-800 rounded-xl border border-gray-700 p-6">
           <div className="flex items-center gap-2 mb-4">
             <svg className="h-5 w-5 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
             </svg>
-            <h2 className="text-lg font-semibold text-white">Buscar Correos Gmail</h2>
+            <h2 className="text-lg font-semibold text-white">Buscar Correos</h2>
+            <span className="text-xs text-gray-500 ml-auto">Soporta Gmail y Outlook</span>
           </div>
 
           <form onSubmit={handleSearch} className="flex gap-3 mb-6">
@@ -82,7 +150,7 @@ export default function Dashboard() {
               type="email"
               value={searchEmail}
               onChange={(e) => setSearchEmail(e.target.value)}
-              placeholder="ejemplo@gmail.com"
+              placeholder="ejemplo@gmail.com o ejemplo@outlook.com"
               className="flex-1 bg-gray-900 border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               required
             />
@@ -112,18 +180,25 @@ export default function Dashboard() {
             </div>
           )}
 
+          {/* Proveedor detectado */}
+          {provider && emails.length > 0 && (
+            <div className="mb-4">
+              {getProviderBadge(provider)}
+            </div>
+          )}
+
           {/* Lista de correos */}
           {emails.length > 0 && (
-            <div className="space-y-3">
+            <div className="space-y-4">
               <p className="text-sm text-gray-400 mb-2">
                 Últimos {emails.length} correos encontrados:
               </p>
               {emails.map((msg) => (
                 <div
                   key={msg.id}
-                  className="bg-gray-900 rounded-lg border border-gray-700 p-4 hover:border-gray-600 transition-colors"
+                  className="bg-gray-900 rounded-lg border border-gray-700 p-5 hover:border-gray-600 transition-colors"
                 >
-                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1 mb-2">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 mb-3">
                     <span className="text-indigo-400 font-medium text-sm truncate">
                       {msg.from}
                     </span>
@@ -131,9 +206,9 @@ export default function Dashboard() {
                       {formatDate(msg.date)}
                     </span>
                   </div>
-                <div className="text-gray-300 text-sm leading-relaxed max-h-96 overflow-y-auto pr-2 custom-scrollbar space-y-0">
-                  {renderEmailBody(msg.body)}
-                </div>
+                  <div className="text-gray-300 text-sm leading-relaxed max-h-96 overflow-y-auto pr-2 custom-scrollbar space-y-0">
+                    {renderEmailBody(msg.body)}
+                  </div>
                 </div>
               ))}
             </div>
