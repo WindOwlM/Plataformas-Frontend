@@ -49,7 +49,7 @@ export function useEmail() {
       try {
         const endpoint = prov === 'outlook' ? '/outlook/outlook/emails' : '/emails'
         const response = await fetch(
-          `${API_URL}${endpoint}?email=${encodeURIComponent(email)}&limit=2`,
+          `${API_URL}${endpoint}?email=${encodeURIComponent(email)}&limit=3`,
           {
             headers: {
             //   'x-api-key': API_KEY,
