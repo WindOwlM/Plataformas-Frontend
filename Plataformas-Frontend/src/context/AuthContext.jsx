@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
+import { API_URL } from '../lib/apiConfig'
 
 // ✅ Exportar el contexto para que useAuth.js lo use
 export const AuthContext = createContext({})
@@ -9,21 +10,30 @@ export function AuthProvider({ children }) {
   const [adminProfile, setAdminProfile] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  const fetchAdminProfile = useCallback(async (userId) => {
-    const { data, error } = await supabase
-      .from('administrador')
-      .select('*')
-      .eq('id', userId)
-      .single()
+  const fetchAdminProfile = useCallback(async () => {
+    const { data: { session } } = await supabase.auth.getSession()
+    const token = session?.access_token
+    if (!token) return
 
-    if (!error) setAdminProfile(data)
+    try {
+      const response = await fetch(`${API_URL}/me`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (response.ok) {
+        setAdminProfile(await response.json())
+      } else {
+        setAdminProfile(null)
+      }
+    } catch {
+      setAdminProfile(null)
+    }
   }, [])
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
       if (session?.user) {
-        fetchAdminProfile(session.user.id)
+        fetchAdminProfile()
       }
       setLoading(false)
     })
@@ -32,7 +42,7 @@ export function AuthProvider({ children }) {
       async (event, session) => {
         setUser(session?.user ?? null)
         if (session?.user) {
-          await fetchAdminProfile(session.user.id)
+          await fetchAdminProfile()
         } else {
           setAdminProfile(null)
         }
