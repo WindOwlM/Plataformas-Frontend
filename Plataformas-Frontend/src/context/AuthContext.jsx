@@ -50,34 +50,6 @@ export function AuthProvider({ children }) {
     return { data, error }
   }
 
-  async function signUp(email, password, nombre) {
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-    })
-
-    if (authError) return { error: authError }
-
-    if (authData.user) {
-      const { error: profileError } = await supabase
-        .from('administrador')
-        .insert([
-          {
-            id: authData.user.id,
-            nombre,
-            rol: 'admin',
-            created_at: new Date().toISOString(),
-          },
-        ])
-
-      if (profileError) {
-        console.error('Error creando perfil:', profileError)
-      }
-    }
-
-    return { data: authData, error: null }
-  }
-
   async function signOut() {
     await supabase.auth.signOut()
     setAdminProfile(null)
@@ -88,7 +60,6 @@ export function AuthProvider({ children }) {
     adminProfile,
     loading,
     signIn,
-    signUp,
     signOut,
     isAdmin: !!adminProfile,
   }
