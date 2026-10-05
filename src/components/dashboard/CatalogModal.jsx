@@ -3,33 +3,36 @@ import InputField from '../ui/InputField'
 import Button from '../ui/Button'
 import Modal from '../ui/Modal'
 
-export default function ClienteModal({ isOpen, onClose, onSubmit, cliente = null }) {
+export default function CatalogModal({
+  isOpen,
+  onClose,
+  onSubmit,
+  item = null,
+  titleNew,
+  titleEdit,
+  label,
+  placeholder,
+  nameKey,
+}) {
   const [nombre, setNombre] = useState('')
-  const [numeroTelefono, setNumeroTelefono] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
-    if (cliente) {
-      setNombre(cliente.nombre || '')
-      setNumeroTelefono(cliente.numero_telefono || '')
+    if (item) {
+      setNombre(item[nameKey] || '')
     } else {
       setNombre('')
-      setNumeroTelefono('')
     }
-  }, [cliente, isOpen])
+  }, [item, isOpen, nameKey])
 
   async function handleSubmit(e) {
     e.preventDefault()
     if (!nombre.trim()) return
 
     setIsLoading(true)
-    await onSubmit({
-      nombre: nombre.trim(),
-      numero_telefono: numeroTelefono.trim() || null,
-    })
+    await onSubmit({ [nameKey]: nombre.trim() })
     setIsLoading(false)
     setNombre('')
-    setNumeroTelefono('')
     onClose()
   }
 
@@ -37,30 +40,23 @@ export default function ClienteModal({ isOpen, onClose, onSubmit, cliente = null
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={cliente ? 'Editar cliente' : 'Nuevo cliente'}
+      title={item ? titleEdit : titleNew}
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <InputField
-          id="nombre"
-          label="Nombre completo *"
-          placeholder="Ej: Juan Pérez"
+          id={nameKey}
+          label={`${label} *`}
+          placeholder={placeholder}
           value={nombre}
           onChange={(e) => setNombre(e.target.value)}
           required
-        />
-        <InputField
-          id="telefono"
-          label="Número de teléfono"
-          placeholder="Ej: +57 300 123 4567"
-          value={numeroTelefono}
-          onChange={(e) => setNumeroTelefono(e.target.value)}
         />
         <div className="flex gap-3 pt-2">
           <Button type="button" variant="secondary" onClick={onClose} className="flex-1">
             Cancelar
           </Button>
           <Button type="submit" isLoading={isLoading} className="flex-1">
-            {cliente ? 'Guardar cambios' : 'Crear cliente'}
+            {item ? 'Guardar cambios' : 'Crear'}
           </Button>
         </div>
       </form>

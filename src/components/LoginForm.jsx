@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'  // ← NUEVO
+import { useNavigate } from 'react-router-dom'
+import { Mail, Lock } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import InputField from './ui/InputField'
 import Button from './ui/Button'
@@ -33,18 +34,6 @@ export default function LoginForm() {
     setIsLoading(false)
   }
 
-  const emailIcon = (
-    <svg className="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
-    </svg>
-  )
-
-  const passwordIcon = (
-    <svg className="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-    </svg>
-  )
-
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       <InputField
@@ -54,7 +43,7 @@ export default function LoginForm() {
         placeholder="admin@tuempresa.com"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
-        icon={emailIcon}
+        icon={<Mail className="h-5 w-5 text-gray-500" />}
         required
       />
 
@@ -65,14 +54,14 @@ export default function LoginForm() {
         placeholder="••••••••"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
-        icon={passwordIcon}
+        icon={<Lock className="h-5 w-5 text-gray-500" />}
         required
       />
 
       {error && <Alert type="error" message={error} />}
 
-      <Button type="submit" isLoading={isLoading}>
-        Iniciar Sesión
+      <Button type="submit" isLoading={isLoading} className="w-full">
+        Iniciar sesión
       </Button>
     </form>
   )
