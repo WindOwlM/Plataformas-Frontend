@@ -4,6 +4,7 @@ import { useApi } from '../hooks/useApi'
 import { fieldClass } from '../components/ui/fieldStyles'
 import PuestoModal from '../components/dashboard/PuestoModal'
 import CuentaModal from '../components/dashboard/CuentaModal'
+import AutocompleteField from '../components/ui/AutocompleteField'
 import Button from '../components/ui/Button'
 
 function estadoBadge(estado) {
@@ -20,30 +21,47 @@ export default function CuentasPage() {
   const { request, loading } = useApi()
   const [plataformas, setPlataformas] = useState([])
   const [plataformaId, setPlataformaId] = useState('')
+  const [clientes, setClientes] = useState([])
+  const [clienteId, setClienteId] = useState('')
   const [cuentas, setCuentas] = useState([])
   const [puestoCuenta, setPuestoCuenta] = useState(null)
   const [expandedIds, setExpandedIds] = useState(() => new Set())
   const [isCuentaModalOpen, setIsCuentaModalOpen] = useState(false)
 
-  async function cargarCuentas(idPlataforma = plataformaId) {
-    if (!idPlataforma) {
+  async function cargarCuentas() {
+    if (!plataformaId && !clienteId) {
       setCuentas([])
       return
     }
-    const query = idPlataforma === 'todas' ? '' : `?plataforma=${idPlataforma}`
+
+    const params = new URLSearchParams()
+    if (plataformaId && plataformaId !== 'todas') params.append('plataforma', plataformaId)
+    if (clienteId) params.append('id_usuario', clienteId)
+
+    const query = params.toString() ? `?${params.toString()}` : ''
     const { data } = await request(`/cuentas${query}`)
-    setCuentas(data || [])
+    const lista = data || []
+    setCuentas(
+      clienteId
+        ? lista.filter((c) =>
+            (c.usuario_cuenta || c.usuarios_cuenta || []).some((p) => p.id_usuario === clienteId)
+          )
+        : lista
+    )
   }
 
   useEffect(() => {
     request('/catalogos/plataformas').then(({ data }) => {
       if (data) setPlataformas(data)
     })
+    request('/clientes').then(({ data }) => {
+      if (data) setClientes(data)
+    })
   }, [request])
 
   useEffect(() => {
-    cargarCuentas(plataformaId)
-  }, [plataformaId])
+    cargarCuentas()
+  }, [plataformaId, clienteId])
 
   async function guardarPuesto(puestoData) {
     const cuentaId = puestoCuenta?.id || puestoData.id_cuenta
@@ -78,9 +96,16 @@ export default function CuentasPage() {
   }
 
   const plataformaNombre = useMemo(() => {
-    if (plataformaId === 'todas') return 'Todas las plataformas'
+    if (plataformaId === 'todas' || (!plataformaId && clienteId)) return 'Todas las plataformas'
     return plataformas.find((p) => p.id === plataformaId)?.nombre_plat || ''
-  }, [plataformaId, plataformas])
+  }, [plataformaId, plataformas, clienteId])
+
+  const showPlataforma = plataformaId === 'todas' || !plataformaId
+  const clienteNombre = clientes.find((c) => c.id === clienteId)?.nombre
+  const tituloLista = clienteNombre
+    ? `Cuentas de ${clienteNombre}`
+    : plataformaNombre
+  const sinFiltro = !plataformaId && !clienteId
 
   return (
     <div className="space-y-5">
@@ -88,7 +113,7 @@ export default function CuentasPage() {
         <div>
           <h2 className="text-xl font-bold text-white">Cuentas</h2>
           <p className="text-sm text-gray-400 mt-1">
-            Elige una plataforma para ver sus cuentas en tabla
+            Elige una plataforma o un cliente para ver las cuentas
           </p>
         </div>
         <Button onClick={() => setIsCuentaModalOpen(true)}>
@@ -98,29 +123,45 @@ export default function CuentasPage() {
       </div>
 
       <div className="bg-gray-800 border border-gray-700 rounded-xl p-4 sm:p-5">
-        <label htmlFor="plataforma" className="block text-sm font-medium text-gray-300 mb-2">
-          Plataforma
-        </label>
-        <select
-          id="plataforma"
-          value={plataformaId}
-          onChange={(e) => setPlataformaId(e.target.value)}
-          className={`${fieldClass} max-w-md`}
-        >
-          <option value="">Selecciona una plataforma</option>
-          <option value="todas">Todas las plataformas</option>
-          {plataformas.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.nombre_plat}
-            </option>
-          ))}
-        </select>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl">
+          <div>
+            <label htmlFor="plataforma" className="block text-sm font-medium text-gray-300 mb-2">
+              Plataforma
+            </label>
+            <select
+              id="plataforma"
+              value={plataformaId}
+              onChange={(e) => setPlataformaId(e.target.value)}
+              className={fieldClass}
+            >
+              <option value="">Selecciona una plataforma</option>
+              <option value="todas">Todas las plataformas</option>
+              {plataformas.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.nombre_plat}
+                </option>
+              ))}
+            </select>
+          </div>
+          <AutocompleteField
+            id="cliente-filtro"
+            label="Cliente"
+            placeholder="Buscar cliente para ver sus cuentas..."
+            value={clienteId}
+            onChange={setClienteId}
+            options={clientes}
+            getOptionLabel={(opt) =>
+              opt.numero_telefono ? `${opt.nombre} · ${opt.numero_telefono}` : opt.nombre
+            }
+            getOptionValue={(opt) => opt.id}
+          />
+        </div>
       </div>
 
-      {!plataformaId ? (
+      {sinFiltro ? (
         <div className="bg-gray-800 rounded-xl border border-gray-700 p-12 text-center">
           <MonitorPlay className="h-10 w-10 text-gray-600 mx-auto mb-3" />
-          <p className="text-gray-400">Selecciona una plataforma para ver las cuentas</p>
+          <p className="text-gray-400">Selecciona una plataforma o un cliente para ver las cuentas</p>
         </div>
       ) : loading && cuentas.length === 0 ? (
         <div className="flex items-center justify-center py-16">
@@ -128,12 +169,16 @@ export default function CuentasPage() {
         </div>
       ) : cuentas.length === 0 ? (
         <div className="bg-gray-800 rounded-xl border border-gray-700 p-12 text-center">
-          <p className="text-gray-400">No hay cuentas para {plataformaNombre}</p>
+          <p className="text-gray-400">
+            {clienteNombre
+              ? `${clienteNombre} no tiene cuentas asignadas`
+              : `No hay cuentas para ${plataformaNombre}`}
+          </p>
         </div>
       ) : (
         <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
           <div className="px-4 py-3 border-b border-gray-700 flex items-center justify-between">
-            <p className="text-sm text-gray-300 font-medium">{plataformaNombre}</p>
+            <p className="text-sm text-gray-300 font-medium">{tituloLista}</p>
             <p className="text-xs text-gray-500">{cuentas.length} cuenta{cuentas.length === 1 ? '' : 's'}</p>
           </div>
           <div className="overflow-x-auto custom-scrollbar">
@@ -141,7 +186,7 @@ export default function CuentasPage() {
               <thead className="bg-gray-900/60 text-gray-400 text-xs uppercase tracking-wide">
                 <tr>
                   <th className="px-4 py-3 font-medium">Correo</th>
-                  {plataformaId === 'todas' && (
+                  {showPlataforma && (
                     <th className="px-4 py-3 font-medium">Plataforma</th>
                   )}
                   <th className="px-4 py-3 font-medium">Proveedor</th>
@@ -155,15 +200,16 @@ export default function CuentasPage() {
               <tbody className="divide-y divide-gray-700">
                 {cuentas.map((cuenta) => {
                   const puestos = cuenta.usuarios_cuenta || cuenta.usuario_cuenta || []
-                  const expanded = expandedIds.has(cuenta.id)
-                  const colSpan = plataformaId === 'todas' ? 8 : 7
+                  const expanded = clienteId ? true : expandedIds.has(cuenta.id)
+                  const colSpan = showPlataforma ? 8 : 7
                   return (
                     <FragmentRow
                       key={cuenta.id}
                       cuenta={cuenta}
                       puestos={puestos}
                       expanded={expanded}
-                      plataformaId={plataformaId}
+                      showPlataforma={showPlataforma}
+                      clienteId={clienteId}
                       colSpan={colSpan}
                       onToggle={() => toggleExpand(cuenta.id)}
                       onAsignar={() => setPuestoCuenta(cuenta)}
@@ -196,7 +242,8 @@ function FragmentRow({
   cuenta,
   puestos,
   expanded,
-  plataformaId,
+  showPlataforma,
+  clienteId,
   colSpan,
   onToggle,
   onAsignar,
@@ -205,7 +252,7 @@ function FragmentRow({
     <>
       <tr className="hover:bg-gray-700/40 transition-colors">
         <td className="px-4 py-3 text-white font-medium">{cuenta.correo}</td>
-        {plataformaId === 'todas' && (
+        {showPlataforma && (
           <td className="px-4 py-3 text-gray-300">
             {cuenta.plataforma?.nombre_plat || '—'}
           </td>
@@ -256,8 +303,10 @@ function FragmentRow({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-700">
-                    {puestos.map((puesto, index) => (
-                      <tr key={puesto.id || index}>
+                    {puestos.map((puesto, index) => {
+                      const esFiltro = clienteId && puesto.id_usuario === clienteId
+                      return (
+                      <tr key={puesto.id || index} className={esFiltro ? 'bg-indigo-500/10' : ''}>
                         <td className="px-3 py-2 text-white">
                           {puesto.usuario?.nombre || 'Sin cliente'}
                         </td>
@@ -274,7 +323,8 @@ function FragmentRow({
                           {puesto.valor_venta != null ? `$${puesto.valor_venta}` : '—'}
                         </td>
                       </tr>
-                    ))}
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
