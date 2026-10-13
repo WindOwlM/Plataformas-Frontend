@@ -1,18 +1,24 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ChevronDown, ChevronRight, Loader2, MonitorPlay, Plus, UserPlus } from 'lucide-react'
+import { ChevronDown, ChevronRight, Loader2, MonitorPlay, Plus, Trash2, UserPlus } from 'lucide-react'
 import { useApi } from '../hooks/useApi'
 import { fieldClass } from '../components/ui/fieldStyles'
 import PuestoModal from '../components/dashboard/PuestoModal'
 import CuentaModal from '../components/dashboard/CuentaModal'
 import AutocompleteField from '../components/ui/AutocompleteField'
 import Button from '../components/ui/Button'
+import QuitarClienteModal from '../components/dashboard/QuitarClienteModal'
+import {
+  cuentaLlena,
+  etiquetaEstado,
+  maxPuestosCuenta,
+  ocupadosCuenta,
+} from '../lib/cuentaEstado'
 
 function estadoBadge(estado) {
   const colors = {
     disponible: 'bg-green-500/20 text-green-400 border-green-500/30',
+    llena: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
     vendida: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-    vencida: 'bg-red-500/20 text-red-400 border-red-500/30',
-    suspendida: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
   }
   return colors[estado] || colors.disponible
 }
@@ -27,6 +33,7 @@ export default function CuentasPage() {
   const [puestoCuenta, setPuestoCuenta] = useState(null)
   const [expandedIds, setExpandedIds] = useState(() => new Set())
   const [isCuentaModalOpen, setIsCuentaModalOpen] = useState(false)
+  const [quitar, setQuitar] = useState(null)
 
   async function cargarCuentas() {
     if (!plataformaId && !clienteId) {
@@ -74,6 +81,14 @@ export default function CuentasPage() {
     if (result.error) return false
     await cargarCuentas()
     return true
+  }
+
+  async function quitarCliente(accion) {
+    if (!quitar?.cuenta?.id || !quitar?.puesto?.id) return
+    const url = `/cuentas/${quitar.cuenta.id}/puestos/${quitar.puesto.id}${accion === 'ubicar' ? '/ubicar' : ''}`
+    const result = await request(url, { method: accion === 'ubicar' ? 'POST' : 'DELETE' })
+    setQuitar(null)
+    if (!result.error) await cargarCuentas()
   }
 
   async function guardarCuenta(cuentaData) {
@@ -213,6 +228,7 @@ export default function CuentasPage() {
                       colSpan={colSpan}
                       onToggle={() => toggleExpand(cuenta.id)}
                       onAsignar={() => setPuestoCuenta(cuenta)}
+                      onQuitar={(puesto) => setQuitar({ cuenta, puesto })}
                     />
                   )
                 })}
@@ -234,6 +250,15 @@ export default function CuentasPage() {
         onClose={() => setIsCuentaModalOpen(false)}
         onSubmit={guardarCuenta}
       />
+
+      <QuitarClienteModal
+        isOpen={!!quitar}
+        onClose={() => setQuitar(null)}
+        onEliminar={() => quitarCliente('eliminar')}
+        onUbicar={() => quitarCliente('ubicar')}
+        nombre={quitar?.puesto?.usuario?.nombre}
+        correo={quitar?.cuenta?.correo}
+      />
     </div>
   )
 }
@@ -247,6 +272,7 @@ function FragmentRow({
   colSpan,
   onToggle,
   onAsignar,
+  onQuitar,
 }) {
   return (
     <>
@@ -261,8 +287,8 @@ function FragmentRow({
           {cuenta.proveedor?.nombre_prov || '—'}
         </td>
         <td className="px-4 py-3">
-          <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium border ${estadoBadge(cuenta.estado)}`}>
-            {cuenta.estado || '—'}
+          <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium border ${estadoBadge(etiquetaEstado(cuenta.estado))}`}>
+            {etiquetaEstado(cuenta.estado)}
           </span>
         </td>
         <td className="px-4 py-3 text-gray-300 whitespace-nowrap">
@@ -271,12 +297,14 @@ function FragmentRow({
         <td className="px-4 py-3 text-gray-300">
           {cuenta.precio_costo != null ? `$${cuenta.precio_costo}` : '—'}
         </td>
-        <td className="px-4 py-3 text-gray-300">{puestos.length}</td>
+        <td className="px-4 py-3 text-gray-300">
+          {ocupadosCuenta(cuenta)}/{maxPuestosCuenta(cuenta)}
+        </td>
         <td className="px-4 py-3">
           <div className="flex items-center justify-end gap-2">
-            <Button size="sm" onClick={onAsignar}>
+            <Button size="sm" onClick={onAsignar} disabled={cuentaLlena(cuenta)}>
               <UserPlus className="h-3.5 w-3.5" />
-              Asignar
+              {cuentaLlena(cuenta) ? 'Llena' : 'Asignar'}
             </Button>
             <Button size="sm" variant="secondary" onClick={onToggle}>
               {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
@@ -300,6 +328,7 @@ function FragmentRow({
                       <th className="px-3 py-2 font-medium text-left">PIN</th>
                       <th className="px-3 py-2 font-medium text-left">Vencimiento</th>
                       <th className="px-3 py-2 font-medium text-left">Venta</th>
+                      <th className="px-3 py-2 font-medium text-right"> </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-700">
@@ -321,6 +350,16 @@ function FragmentRow({
                         </td>
                         <td className="px-3 py-2 text-gray-300">
                           {puesto.valor_venta != null ? `$${puesto.valor_venta}` : '—'}
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          <button
+                            type="button"
+                            onClick={() => onQuitar?.(puesto)}
+                            className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg"
+                            title="Quitar de la cuenta"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
                         </td>
                       </tr>
                       )

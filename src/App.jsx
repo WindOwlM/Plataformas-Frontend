@@ -8,6 +8,7 @@ import CuentasPage from './pages/CuentasPage'
 import ClientesPage from './pages/ClientesPage'
 import CatalogosPage from './pages/CatalogosPage'
 import CorreosPage from './pages/CorreosPage'
+import PorUbicarPage from './pages/PorUbicarPage'
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
@@ -43,6 +44,7 @@ function App() {
           >
             <Route index element={<DashboardPage />} />
             <Route path="cuentas" element={<CuentasPage />} />
+            <Route path="por-ubicar" element={<PorUbicarPage />} />
             <Route path="clientes" element={<ClientesPage />} />
             <Route path="catalogos" element={<CatalogosPage />} />
             <Route path="correos" element={<CorreosPage />} />

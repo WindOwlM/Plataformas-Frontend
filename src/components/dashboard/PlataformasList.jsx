@@ -78,7 +78,12 @@ export default function PlataformasList() {
               key={p.id}
               className="px-4 py-3.5 flex items-center justify-between hover:bg-gray-700/50 transition-colors group"
             >
-              <span className="text-white">{p.nombre_plat}</span>
+              <span className="text-white">
+                {p.nombre_plat}
+                <span className="ml-2 text-xs text-gray-500">
+                  {p.max_puestos || 5} puestos
+                </span>
+              </span>
               <button
                 type="button"
                 onClick={() => {
@@ -105,6 +110,7 @@ export default function PlataformasList() {
         label="Nombre"
         placeholder="Ej: Netflix, Disney+, HBO Max..."
         nameKey="nombre_plat"
+        withMaxPuestos
       />
     </div>
   )

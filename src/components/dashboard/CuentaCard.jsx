@@ -3,6 +3,12 @@ import {
   Copy, Check, Eye, EyeOff, Pencil, Trash2, Plus, Calendar, Banknote, StickyNote, Users,
 } from 'lucide-react'
 import { useApi } from '../../hooks/useApi'
+import {
+  cuentaLlena,
+  etiquetaEstado,
+  maxPuestosCuenta,
+  ocupadosCuenta,
+} from '../../lib/cuentaEstado'
 
 export default function CuentaCard({ cuenta, onEditPuesto, onDeletePuesto, onEditCuenta, onDeleteCuenta, onNewPuesto }) {
   const [showPassword, setShowPassword] = useState(false)
@@ -65,9 +71,8 @@ export default function CuentaCard({ cuenta, onEditPuesto, onDeletePuesto, onEdi
   function getEstadoColor(estado) {
     const colors = {
       disponible: 'bg-green-500/20 text-green-400 border-green-500/30',
+      llena: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
       vendida: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-      vencida: 'bg-red-500/20 text-red-400 border-red-500/30',
-      suspendida: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
     }
     return colors[estado] || colors.disponible
   }
@@ -106,8 +111,8 @@ export default function CuentaCard({ cuenta, onEditPuesto, onDeletePuesto, onEdi
               </p>
             </div>
           </div>
-          <span className={`px-2 py-1 rounded-full text-xs font-medium border shrink-0 ${getEstadoColor(cuenta.estado)}`}>
-            {cuenta.estado}
+          <span className={`px-2 py-1 rounded-full text-xs font-medium border shrink-0 ${getEstadoColor(etiquetaEstado(cuenta.estado))}`}>
+            {etiquetaEstado(cuenta.estado)}
           </span>
         </div>
 
@@ -163,15 +168,16 @@ export default function CuentaCard({ cuenta, onEditPuesto, onDeletePuesto, onEdi
         <div className="px-5 py-3 border-b border-gray-700/50 flex items-center justify-between gap-2">
           <h4 className="text-sm font-medium text-gray-300 flex items-center gap-2">
             <Users className="h-4 w-4 text-gray-500" />
-            Puestos ({puestos.length})
+            Puestos ({ocupadosCuenta(cuenta)}/{maxPuestosCuenta(cuenta)})
           </h4>
           <button
             type="button"
             onClick={() => onNewPuesto?.(cuenta)}
-            className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 shrink-0"
+            disabled={cuentaLlena(cuenta)}
+            className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <Plus className="h-3 w-3" />
-            Agregar puesto
+            {cuentaLlena(cuenta) ? 'Llena' : 'Agregar puesto'}
           </button>
         </div>
 

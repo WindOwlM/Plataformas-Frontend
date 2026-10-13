@@ -5,6 +5,7 @@ import CuentaCard from './CuentaCard'
 import CuentaModal from './CuentaModal'
 import PuestoModal from './PuestoModal'
 import ConfirmModal from '../ui/ConfirmModal'
+import QuitarClienteModal from './QuitarClienteModal'
 import Button from '../ui/Button'
 
 export default function CuentasList() {
@@ -102,10 +103,11 @@ export default function CuentasList() {
     return true
   }
 
-  async function eliminarPuesto(cuenta, puesto) {
-    const { error } = await request(`/cuentas/${cuenta.id}/puestos/${puesto.id}`, {
-      method: 'DELETE',
-    })
+  async function quitarPuesto(accion) {
+    const { cuenta, puesto } = confirmDelete || {}
+    if (!cuenta?.id || !puesto?.id) return
+    const url = `/cuentas/${cuenta.id}/puestos/${puesto.id}${accion === 'ubicar' ? '/ubicar' : ''}`
+    const { error } = await request(url, { method: accion === 'ubicar' ? 'POST' : 'DELETE' })
     if (!error) await cargarCuentas()
     setConfirmDelete(null)
   }
@@ -169,23 +171,22 @@ export default function CuentasList() {
         puesto={puestoEditando}
       />
 
-      {confirmDelete && (
+      <QuitarClienteModal
+        isOpen={confirmDelete?.type === 'puesto'}
+        onClose={() => setConfirmDelete(null)}
+        onEliminar={() => quitarPuesto('eliminar')}
+        onUbicar={() => quitarPuesto('ubicar')}
+        nombre={confirmDelete?.puesto?.usuario?.nombre}
+        correo={confirmDelete?.cuenta?.correo}
+      />
+
+      {confirmDelete?.type === 'cuenta' && (
         <ConfirmModal
-          isOpen={!!confirmDelete}
+          isOpen
           onClose={() => setConfirmDelete(null)}
-          onConfirm={() => {
-            if (confirmDelete.type === 'puesto') {
-              eliminarPuesto(confirmDelete.cuenta, confirmDelete.puesto)
-            } else {
-              eliminarCuenta(confirmDelete.cuenta)
-            }
-          }}
-          title={confirmDelete.type === 'puesto' ? 'Quitar cliente de la cuenta' : 'Eliminar cuenta'}
-          message={
-            confirmDelete.type === 'puesto'
-              ? `¿Quitar a ${confirmDelete.puesto?.usuario?.nombre || 'este cliente'} de ${confirmDelete.cuenta?.correo}?`
-              : `¿Eliminar ${confirmDelete.cuenta.correo}?`
-          }
+          onConfirm={() => eliminarCuenta(confirmDelete.cuenta)}
+          title="Eliminar cuenta"
+          message={`¿Eliminar ${confirmDelete.cuenta.correo}?`}
           confirmText="Eliminar"
           variant="danger"
         />

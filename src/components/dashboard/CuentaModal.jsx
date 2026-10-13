@@ -6,6 +6,7 @@ import AutocompleteField from '../ui/AutocompleteField'
 import Button from '../ui/Button'
 import Modal from '../ui/Modal'
 import { fieldClass } from '../ui/fieldStyles'
+import { maxPuestosDe } from '../../lib/cuentaEstado'
 
 export default function CuentaModal({ isOpen, onClose, onSubmit, cuenta }) {
   const [correo, setCorreo] = useState('')
@@ -82,11 +83,16 @@ export default function CuentaModal({ isOpen, onClose, onSubmit, cuenta }) {
     }
   }
 
+  const maxPuestos = maxPuestosDe(plataformas.find((p) => p.id === idPlataforma))
+
   function agregarPuesto() {
-    setPuestos((prev) => [
-      ...prev,
-      { id_usuario: '', pin: '', vencimiento_usuario: '', es_combo: false, valor_venta: '' },
-    ])
+    setPuestos((prev) => {
+      if (prev.length >= maxPuestos) return prev
+      return [
+        ...prev,
+        { id_usuario: '', pin: '', vencimiento_usuario: '', es_combo: false, valor_venta: '' },
+      ]
+    })
   }
 
   function eliminarPuesto(index) {
@@ -226,8 +232,10 @@ export default function CuentaModal({ isOpen, onClose, onSubmit, cuenta }) {
 
         <section className="rounded-xl border border-gray-700 bg-gray-900/40 p-4">
           <div className="flex items-center justify-between mb-4">
-            <h4 className="text-sm font-semibold text-gray-300">Puestos / perfiles</h4>
-            <Button type="button" size="sm" onClick={agregarPuesto}>
+            <h4 className="text-sm font-semibold text-gray-300">
+              Puestos / perfiles ({puestos.length}/{maxPuestos})
+            </h4>
+            <Button type="button" size="sm" onClick={agregarPuesto} disabled={puestos.length >= maxPuestos}>
               <Plus className="h-4 w-4" />
               Agregar puesto
             </Button>

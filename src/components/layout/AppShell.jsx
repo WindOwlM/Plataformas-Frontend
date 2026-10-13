@@ -1,10 +1,11 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { Zap, LayoutDashboard, Mail, CreditCard, Users, Library, LogOut } from 'lucide-react'
+import { Zap, LayoutDashboard, Mail, CreditCard, Users, Library, LogOut, MapPin } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/dashboard/cuentas', label: 'Cuentas', icon: CreditCard },
+  { to: '/dashboard/por-ubicar', label: 'Por ubicar', icon: MapPin },
   { to: '/dashboard/clientes', label: 'Clientes', icon: Users },
   { to: '/dashboard/catalogos', label: 'Catálogos', icon: Library },
   { to: '/dashboard/correos', label: 'Correos', icon: Mail },
