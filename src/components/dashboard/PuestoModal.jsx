@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useApi } from '../../hooks/useApi'
-import AutocompleteField from '../ui/AutocompleteField'
+import AutocompleteField, { labelCliente, optionId } from '../ui/AutocompleteField'
 import InputField from '../ui/InputField'
 import Button from '../ui/Button'
 import Modal from '../ui/Modal'
 import { fieldClass } from '../ui/fieldStyles'
 
-export default function PuestoModal({ isOpen, onClose, onSubmit, cuenta, puesto }) {
+export default function PuestoModal({ isOpen, onClose, onSubmit, cuenta, puesto, clientesPrecargados }) {
   const [idUsuario, setIdUsuario] = useState('')
   const [pin, setPin] = useState('')
   const [vencimiento, setVencimiento] = useState('')
@@ -36,7 +36,11 @@ export default function PuestoModal({ isOpen, onClose, onSubmit, cuenta, puesto 
   }, [isOpen, puesto])
 
   async function cargarClientes() {
-    const { data } = await request('/clientes')
+    if (clientesPrecargados?.length) {
+      setClientes(clientesPrecargados)
+      return
+    }
+    const { data } = await request('/clientes', { silent: true })
     if (data) setClientes(data)
   }
 
@@ -81,10 +85,8 @@ export default function PuestoModal({ isOpen, onClose, onSubmit, cuenta, puesto 
           value={idUsuario}
           onChange={setIdUsuario}
           options={clientes}
-          getOptionLabel={(opt) =>
-            opt.numero_telefono ? `${opt.nombre} · ${opt.numero_telefono}` : opt.nombre
-          }
-          getOptionValue={(opt) => opt.id}
+          getOptionLabel={labelCliente}
+          getOptionValue={optionId}
           required
         />
 

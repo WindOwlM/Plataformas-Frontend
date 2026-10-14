@@ -1,18 +1,42 @@
-import { useState, useRef, useEffect } from 'react'
+import { memo, useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { X } from 'lucide-react'
 import { fieldClass } from './fieldStyles'
 
-export default function AutocompleteField({
+export function labelNombre(opt) {
+  return opt.nombre || ''
+}
+
+export function labelPlataforma(opt) {
+  return opt.nombre_plat || ''
+}
+
+export function labelProveedor(opt) {
+  return opt.nombre_prov || ''
+}
+
+export function labelCliente(opt) {
+  return opt.numero_telefono ? `${opt.nombre} · ${opt.numero_telefono}` : opt.nombre || ''
+}
+
+export function optionId(opt) {
+  return opt.id
+}
+
+function defaultGetOptionLabel(opt) {
+  return opt.nombre || opt.nombre_plat || opt.nombre_prov || ''
+}
+
+function AutocompleteField({
   id,
   label,
   placeholder,
   value,
   onChange,
   options = [],
-  getOptionLabel = (opt) => opt.nombre || opt.nombre_plat || opt.nombre_prov || '',
-  getOptionValue = (opt) => opt.id,
+  getOptionLabel = defaultGetOptionLabel,
+  getOptionValue = optionId,
   required = false,
-  icon
+  icon,
 }) {
   const [query, setQuery] = useState('')
   const [isOpen, setIsOpen] = useState(false)
@@ -20,15 +44,16 @@ export default function AutocompleteField({
   const inputRef = useRef(null)
   const containerRef = useRef(null)
 
-  // Encontrar la opción seleccionada para mostrar su nombre
-  const selectedOption = options.find(opt => getOptionValue(opt) === value)
-  
-  // Filtrar opciones según el texto escrito
-  const filteredOptions = query.length > 0
-    ? options.filter(opt => 
-        getOptionLabel(opt).toLowerCase().includes(query.toLowerCase())
-      )
-    : options
+  const selectedOption = useMemo(
+    () => options.find((opt) => getOptionValue(opt) === value),
+    [options, getOptionValue, value]
+  )
+
+  const filteredOptions = useMemo(() => {
+    if (!query) return options
+    const q = query.toLowerCase()
+    return options.filter((opt) => getOptionLabel(opt).toLowerCase().includes(q))
+  }, [options, query, getOptionLabel])
 
   useEffect(() => {
     function handleClickOutside(e) {
@@ -40,29 +65,27 @@ export default function AutocompleteField({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  function handleSelect(option) {
+  const handleSelect = useCallback((option) => {
     onChange(getOptionValue(option))
     setQuery('')
     setIsOpen(false)
     inputRef.current?.blur()
-  }
+  }, [onChange, getOptionValue])
 
   function handleInputChange(e) {
     setQuery(e.target.value)
     setIsOpen(true)
     setHighlightedIndex(0)
-    if (value) {
-      onChange('') // Limpiar selección si empieza a escribir
-    }
+    if (value) onChange('')
   }
 
   function handleKeyDown(e) {
     if (e.key === 'ArrowDown') {
       e.preventDefault()
-      setHighlightedIndex(i => Math.min(i + 1, filteredOptions.length - 1))
+      setHighlightedIndex((i) => Math.min(i + 1, filteredOptions.length - 1))
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
-      setHighlightedIndex(i => Math.max(i - 1, 0))
+      setHighlightedIndex((i) => Math.max(i - 1, 0))
     } else if (e.key === 'Enter') {
       e.preventDefault()
       if (filteredOptions[highlightedIndex]) {
@@ -79,14 +102,14 @@ export default function AutocompleteField({
         {label}
         {required && <span className="text-red-400 ml-1">*</span>}
       </label>
-      
+
       <div className="relative">
         {icon && (
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             {icon}
           </div>
         )}
-        
+
         <input
           ref={inputRef}
           type="text"
@@ -99,8 +122,7 @@ export default function AutocompleteField({
           required={required && !value}
           className={`${fieldClass} ${icon ? 'pl-10' : ''} pr-10`}
         />
-        
-        {/* Indicador de seleccionado */}
+
         {selectedOption && (
           <button
             type="button"
@@ -116,7 +138,6 @@ export default function AutocompleteField({
         )}
       </div>
 
-      {/* Dropdown de resultados */}
       {isOpen && filteredOptions.length > 0 && (
         <div className="absolute z-50 mt-1 w-full bg-gray-700 border border-gray-600 rounded-lg shadow-xl max-h-60 overflow-auto">
           {filteredOptions.map((option, index) => (
@@ -137,7 +158,6 @@ export default function AutocompleteField({
         </div>
       )}
 
-      {/* Sin resultados */}
       {isOpen && query.length > 0 && filteredOptions.length === 0 && (
         <div className="absolute z-50 mt-1 w-full bg-gray-700 border border-gray-600 rounded-lg shadow-xl p-3 text-sm text-gray-400">
           No se encontraron resultados
@@ -146,3 +166,5 @@ export default function AutocompleteField({
     </div>
   )
 }
+
+export default memo(AutocompleteField)

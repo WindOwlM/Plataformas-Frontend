@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { ChevronDown, ChevronRight, Loader2, MonitorPlay, Plus, Trash2, UserPlus } from 'lucide-react'
 import { useApi } from '../hooks/useApi'
 import { fieldClass } from '../components/ui/fieldStyles'
 import PuestoModal from '../components/dashboard/PuestoModal'
 import CuentaModal from '../components/dashboard/CuentaModal'
-import AutocompleteField from '../components/ui/AutocompleteField'
+import AutocompleteField, { labelCliente, optionId } from '../components/ui/AutocompleteField'
 import Button from '../components/ui/Button'
 import QuitarClienteModal from '../components/dashboard/QuitarClienteModal'
 import {
@@ -35,7 +35,7 @@ export default function CuentasPage() {
   const [isCuentaModalOpen, setIsCuentaModalOpen] = useState(false)
   const [quitar, setQuitar] = useState(null)
 
-  async function cargarCuentas() {
+  const cargarCuentas = useCallback(async () => {
     if (!plataformaId && !clienteId) {
       setCuentas([])
       return
@@ -55,22 +55,22 @@ export default function CuentasPage() {
           )
         : lista
     )
-  }
+  }, [plataformaId, clienteId, request])
 
   useEffect(() => {
-    request('/catalogos/plataformas').then(({ data }) => {
+    request('/catalogos/plataformas', { silent: true }).then(({ data }) => {
       if (data) setPlataformas(data)
     })
-    request('/clientes').then(({ data }) => {
+    request('/clientes', { silent: true }).then(({ data }) => {
       if (data) setClientes(data)
     })
   }, [request])
 
   useEffect(() => {
     cargarCuentas()
-  }, [plataformaId, clienteId])
+  }, [cargarCuentas])
 
-  async function guardarPuesto(puestoData) {
+  const guardarPuesto = useCallback(async (puestoData) => {
     const cuentaId = puestoCuenta?.id || puestoData.id_cuenta
     if (!cuentaId) return false
 
@@ -81,17 +81,17 @@ export default function CuentasPage() {
     if (result.error) return false
     await cargarCuentas()
     return true
-  }
+  }, [puestoCuenta, request, cargarCuentas])
 
-  async function quitarCliente(accion) {
+  const quitarCliente = useCallback(async (accion) => {
     if (!quitar?.cuenta?.id || !quitar?.puesto?.id) return
     const url = `/cuentas/${quitar.cuenta.id}/puestos/${quitar.puesto.id}${accion === 'ubicar' ? '/ubicar' : ''}`
     const result = await request(url, { method: accion === 'ubicar' ? 'POST' : 'DELETE' })
     setQuitar(null)
     if (!result.error) await cargarCuentas()
-  }
+  }, [quitar, request, cargarCuentas])
 
-  async function guardarCuenta(cuentaData) {
+  const guardarCuenta = useCallback(async (cuentaData) => {
     const result = await request('/cuentas/crear', {
       method: 'POST',
       body: JSON.stringify(cuentaData),
@@ -99,28 +99,45 @@ export default function CuentasPage() {
     if (result.error) return
     setIsCuentaModalOpen(false)
     await cargarCuentas()
-  }
+  }, [request, cargarCuentas])
 
-  function toggleExpand(id) {
+  const toggleExpand = useCallback((id) => {
     setExpandedIds((prev) => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
       return next
     })
-  }
+  }, [])
+
+  const handleQuitar = useCallback((cuenta, puesto) => {
+    setQuitar({ cuenta, puesto })
+  }, [])
 
   const plataformaNombre = useMemo(() => {
     if (plataformaId === 'todas' || (!plataformaId && clienteId)) return 'Todas las plataformas'
     return plataformas.find((p) => p.id === plataformaId)?.nombre_plat || ''
   }, [plataformaId, plataformas, clienteId])
 
+  const clienteNombre = useMemo(
+    () => clientes.find((c) => c.id === clienteId)?.nombre,
+    [clientes, clienteId]
+  )
+
   const showPlataforma = plataformaId === 'todas' || !plataformaId
-  const clienteNombre = clientes.find((c) => c.id === clienteId)?.nombre
-  const tituloLista = clienteNombre
-    ? `Cuentas de ${clienteNombre}`
-    : plataformaNombre
+  const tituloLista = clienteNombre ? `Cuentas de ${clienteNombre}` : plataformaNombre
   const sinFiltro = !plataformaId && !clienteId
+  const colSpan = showPlataforma ? 8 : 7
+
+  const filas = useMemo(
+    () =>
+      cuentas.map((cuenta) => ({
+        cuenta,
+        puestos: cuenta.usuarios_cuenta || cuenta.usuario_cuenta || [],
+        expanded: clienteId ? true : expandedIds.has(cuenta.id),
+      })),
+    [cuentas, clienteId, expandedIds]
+  )
 
   return (
     <div className="space-y-5">
@@ -165,10 +182,8 @@ export default function CuentasPage() {
             value={clienteId}
             onChange={setClienteId}
             options={clientes}
-            getOptionLabel={(opt) =>
-              opt.numero_telefono ? `${opt.nombre} · ${opt.numero_telefono}` : opt.nombre
-            }
-            getOptionValue={(opt) => opt.id}
+            getOptionLabel={labelCliente}
+            getOptionValue={optionId}
           />
         </div>
       </div>
@@ -213,25 +228,20 @@ export default function CuentasPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-700">
-                {cuentas.map((cuenta) => {
-                  const puestos = cuenta.usuarios_cuenta || cuenta.usuario_cuenta || []
-                  const expanded = clienteId ? true : expandedIds.has(cuenta.id)
-                  const colSpan = showPlataforma ? 8 : 7
-                  return (
-                    <FragmentRow
-                      key={cuenta.id}
-                      cuenta={cuenta}
-                      puestos={puestos}
-                      expanded={expanded}
-                      showPlataforma={showPlataforma}
-                      clienteId={clienteId}
-                      colSpan={colSpan}
-                      onToggle={() => toggleExpand(cuenta.id)}
-                      onAsignar={() => setPuestoCuenta(cuenta)}
-                      onQuitar={(puesto) => setQuitar({ cuenta, puesto })}
-                    />
-                  )
-                })}
+                {filas.map(({ cuenta, puestos, expanded }) => (
+                  <FragmentRow
+                    key={cuenta.id}
+                    cuenta={cuenta}
+                    puestos={puestos}
+                    expanded={expanded}
+                    showPlataforma={showPlataforma}
+                    clienteId={clienteId}
+                    colSpan={colSpan}
+                    onToggle={toggleExpand}
+                    onAsignar={setPuestoCuenta}
+                    onQuitar={handleQuitar}
+                  />
+                ))}
               </tbody>
             </table>
           </div>
@@ -243,12 +253,15 @@ export default function CuentasPage() {
         onClose={() => setPuestoCuenta(null)}
         onSubmit={guardarPuesto}
         cuenta={puestoCuenta}
+        clientesPrecargados={clientes}
       />
 
       <CuentaModal
         isOpen={isCuentaModalOpen}
         onClose={() => setIsCuentaModalOpen(false)}
         onSubmit={guardarCuenta}
+        plataformasPrecargadas={plataformas}
+        clientesPrecargados={clientes}
       />
 
       <QuitarClienteModal
@@ -263,7 +276,7 @@ export default function CuentasPage() {
   )
 }
 
-function FragmentRow({
+const FragmentRow = memo(function FragmentRow({
   cuenta,
   puestos,
   expanded,
@@ -274,6 +287,9 @@ function FragmentRow({
   onAsignar,
   onQuitar,
 }) {
+  const llena = cuentaLlena(cuenta)
+  const estado = etiquetaEstado(cuenta.estado)
+
   return (
     <>
       <tr className="hover:bg-gray-700/40 transition-colors">
@@ -287,8 +303,8 @@ function FragmentRow({
           {cuenta.proveedor?.nombre_prov || '—'}
         </td>
         <td className="px-4 py-3">
-          <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium border ${estadoBadge(etiquetaEstado(cuenta.estado))}`}>
-            {etiquetaEstado(cuenta.estado)}
+          <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium border ${estadoBadge(estado)}`}>
+            {estado}
           </span>
         </td>
         <td className="px-4 py-3 text-gray-300 whitespace-nowrap">
@@ -302,11 +318,11 @@ function FragmentRow({
         </td>
         <td className="px-4 py-3">
           <div className="flex items-center justify-end gap-2">
-            <Button size="sm" onClick={onAsignar} disabled={cuentaLlena(cuenta)}>
+            <Button size="sm" onClick={() => onAsignar(cuenta)} disabled={llena}>
               <UserPlus className="h-3.5 w-3.5" />
-              {cuentaLlena(cuenta) ? 'Llena' : 'Asignar'}
+              {llena ? 'Llena' : 'Asignar'}
             </Button>
-            <Button size="sm" variant="secondary" onClick={onToggle}>
+            <Button size="sm" variant="secondary" onClick={() => onToggle(cuenta.id)}>
               {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
               {expanded ? 'Ocultar' : 'Desplegar'}
             </Button>
@@ -335,33 +351,33 @@ function FragmentRow({
                     {puestos.map((puesto, index) => {
                       const esFiltro = clienteId && puesto.id_usuario === clienteId
                       return (
-                      <tr key={puesto.id || index} className={esFiltro ? 'bg-indigo-500/10' : ''}>
-                        <td className="px-3 py-2 text-white">
-                          {puesto.usuario?.nombre || 'Sin cliente'}
-                        </td>
-                        <td className="px-3 py-2 text-gray-400">
-                          {puesto.usuario?.numero_telefono || '—'}
-                        </td>
-                        <td className="px-3 py-2 font-mono text-gray-300">
-                          {puesto.pin || '—'}
-                        </td>
-                        <td className="px-3 py-2 text-gray-300">
-                          {puesto.vencimiento_usuario || '—'}
-                        </td>
-                        <td className="px-3 py-2 text-gray-300">
-                          {puesto.valor_venta != null ? `$${puesto.valor_venta}` : '—'}
-                        </td>
-                        <td className="px-3 py-2 text-right">
-                          <button
-                            type="button"
-                            onClick={() => onQuitar?.(puesto)}
-                            className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg"
-                            title="Quitar de la cuenta"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </td>
-                      </tr>
+                        <tr key={puesto.id || index} className={esFiltro ? 'bg-indigo-500/10' : ''}>
+                          <td className="px-3 py-2 text-white">
+                            {puesto.usuario?.nombre || 'Sin cliente'}
+                          </td>
+                          <td className="px-3 py-2 text-gray-400">
+                            {puesto.usuario?.numero_telefono || '—'}
+                          </td>
+                          <td className="px-3 py-2 font-mono text-gray-300">
+                            {puesto.pin || '—'}
+                          </td>
+                          <td className="px-3 py-2 text-gray-300">
+                            {puesto.vencimiento_usuario || '—'}
+                          </td>
+                          <td className="px-3 py-2 text-gray-300">
+                            {puesto.valor_venta != null ? `$${puesto.valor_venta}` : '—'}
+                          </td>
+                          <td className="px-3 py-2 text-right">
+                            <button
+                              type="button"
+                              onClick={() => onQuitar(cuenta, puesto)}
+                              className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg"
+                              title="Quitar de la cuenta"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </td>
+                        </tr>
                       )
                     })}
                   </tbody>
@@ -373,4 +389,4 @@ function FragmentRow({
       )}
     </>
   )
-}
+})

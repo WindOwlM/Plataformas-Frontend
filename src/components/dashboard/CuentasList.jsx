@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Plus, Loader2 } from 'lucide-react'
 import { useApi } from '../../hooks/useApi'
 import CuentaCard from './CuentaCard'
@@ -17,14 +17,14 @@ export default function CuentasList() {
   const [confirmDelete, setConfirmDelete] = useState(null)
   const { request, loading } = useApi()
 
-  useEffect(() => {
-    cargarCuentas()
-  }, [])
-
-  async function cargarCuentas() {
+  const cargarCuentas = useCallback(async () => {
     const { data } = await request('/cuentas')
     if (data) setCuentas(data)
-  }
+  }, [request])
+
+  useEffect(() => {
+    cargarCuentas()
+  }, [cargarCuentas])
 
   async function guardarCuenta(cuentaData) {
     if (cuentaEditando) {
@@ -69,20 +69,33 @@ export default function CuentasList() {
     setConfirmDelete(null)
   }
 
-  function handleEditCuenta(cuenta) {
+  const handleEditCuenta = useCallback((cuenta) => {
     setCuentaEditando(cuenta)
     setIsModalOpen(true)
-  }
+  }, [])
 
-  function handleNewCuenta() {
+  const handleNewCuenta = useCallback(() => {
     setCuentaEditando(null)
     setIsModalOpen(true)
-  }
+  }, [])
 
-  function handleNewPuesto(cuenta) {
+  const handleNewPuesto = useCallback((cuenta) => {
     setPuestoCuenta(cuenta)
     setPuestoEditando(null)
-  }
+  }, [])
+
+  const handleEditPuesto = useCallback((c, p) => {
+    setPuestoCuenta(c)
+    setPuestoEditando(p)
+  }, [])
+
+  const handleDeletePuesto = useCallback((c, p) => {
+    setConfirmDelete({ type: 'puesto', cuenta: c, puesto: p })
+  }, [])
+
+  const handleDeleteCuenta = useCallback((c) => {
+    setConfirmDelete({ type: 'cuenta', cuenta: c })
+  }, [])
 
   async function guardarPuesto(puestoData) {
     const cuentaId = puestoCuenta?.id || puestoData.id_cuenta
@@ -140,13 +153,10 @@ export default function CuentasList() {
             <CuentaCard
               key={cuenta.id}
               cuenta={cuenta}
-              onEditPuesto={(c, p) => {
-                setPuestoCuenta(c)
-                setPuestoEditando(p)
-              }}
-              onDeletePuesto={(c, p) => setConfirmDelete({ type: 'puesto', cuenta: c, puesto: p })}
+              onEditPuesto={handleEditPuesto}
+              onDeletePuesto={handleDeletePuesto}
               onEditCuenta={handleEditCuenta}
-              onDeleteCuenta={(c) => setConfirmDelete({ type: 'cuenta', cuenta: c })}
+              onDeleteCuenta={handleDeleteCuenta}
               onNewPuesto={handleNewPuesto}
             />
           ))}

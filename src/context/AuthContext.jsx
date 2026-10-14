@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { createContext, useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { API_URL } from '../lib/apiConfig'
 
@@ -7,12 +7,11 @@ export const AuthContext = createContext({})
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
+  const [accessToken, setAccessToken] = useState(null)
   const [adminProfile, setAdminProfile] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  const fetchAdminProfile = useCallback(async () => {
-    const { data: { session } } = await supabase.auth.getSession()
-    const token = session?.access_token
+  const fetchAdminProfile = useCallback(async (token) => {
     if (!token) return
 
     try {
@@ -32,17 +31,19 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
+      setAccessToken(session?.access_token ?? null)
       if (session?.user) {
-        fetchAdminProfile()
+        fetchAdminProfile(session.access_token)
       }
       setLoading(false)
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      async (_event, session) => {
         setUser(session?.user ?? null)
+        setAccessToken(session?.access_token ?? null)
         if (session?.user) {
-          await fetchAdminProfile()
+          await fetchAdminProfile(session.access_token)
         } else {
           setAdminProfile(null)
         }
@@ -52,27 +53,29 @@ export function AuthProvider({ children }) {
     return () => subscription.unsubscribe()
   }, [fetchAdminProfile])
 
-  async function signIn(email, password) {
+  const signIn = useCallback(async (email, password) => {
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     })
     return { data, error }
-  }
+  }, [])
 
-  async function signOut() {
+  const signOut = useCallback(async () => {
     await supabase.auth.signOut()
     setAdminProfile(null)
-  }
+    setAccessToken(null)
+  }, [])
 
-  const value = {
+  const value = useMemo(() => ({
     user,
+    accessToken,
     adminProfile,
     loading,
     signIn,
     signOut,
     isAdmin: !!adminProfile,
-  }
+  }), [user, accessToken, adminProfile, loading, signIn, signOut])
 
   return (
     <AuthContext.Provider value={value}>

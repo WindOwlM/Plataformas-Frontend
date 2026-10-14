@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { memo, useEffect, useMemo, useState } from 'react'
 import { Clock, CalendarClock, CircleAlert, Loader2 } from 'lucide-react'
 import { useApi } from '../../hooks/useApi'
 import StatCard from './StatCard'
@@ -19,7 +19,7 @@ const bucketMeta = {
   },
 }
 
-function ItemRow({ item }) {
+const ItemRow = memo(function ItemRow({ item }) {
   const meta = bucketMeta[item.bucket]
   return (
     <div className="px-4 py-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 hover:bg-gray-700/40 transition-colors">
@@ -47,7 +47,7 @@ function ItemRow({ item }) {
       </div>
     </div>
   )
-}
+})
 
 export default function VencimientosPanel() {
   const { request, loading } = useApi()
@@ -60,9 +60,12 @@ export default function VencimientosPanel() {
   }, [request])
 
   const items = useMemo(() => buildVencimientoItems(cuentas), [cuentas])
-  const manana = items.filter((i) => i.bucket === 'manana')
-  const hoy = items.filter((i) => i.bucket === 'hoy')
-  const vencidas = items.filter((i) => i.bucket === 'vencida')
+  const grupos = useMemo(() => ({
+    hoy: items.filter((i) => i.bucket === 'hoy'),
+    manana: items.filter((i) => i.bucket === 'manana'),
+    vencida: items.filter((i) => i.bucket === 'vencida'),
+  }), [items])
+  const { hoy, manana, vencida: vencidas } = grupos
 
   return (
     <div className="space-y-6">
@@ -104,7 +107,7 @@ export default function VencimientosPanel() {
         </div>
       ) : (
         ['hoy', 'manana', 'vencida'].map((bucket) => {
-          const group = items.filter((i) => i.bucket === bucket)
+          const group = grupos[bucket]
           if (group.length === 0) return null
           return (
             <div key={bucket} className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">

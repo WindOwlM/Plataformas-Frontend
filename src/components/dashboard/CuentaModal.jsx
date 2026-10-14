@@ -1,14 +1,26 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Plus } from 'lucide-react'
 import { useApi } from '../../hooks/useApi'
 import InputField from '../ui/InputField'
-import AutocompleteField from '../ui/AutocompleteField'
+import AutocompleteField, {
+  labelNombre,
+  labelPlataforma,
+  labelProveedor,
+  optionId,
+} from '../ui/AutocompleteField'
 import Button from '../ui/Button'
 import Modal from '../ui/Modal'
 import { fieldClass } from '../ui/fieldStyles'
 import { maxPuestosDe } from '../../lib/cuentaEstado'
 
-export default function CuentaModal({ isOpen, onClose, onSubmit, cuenta }) {
+export default function CuentaModal({
+  isOpen,
+  onClose,
+  onSubmit,
+  cuenta,
+  plataformasPrecargadas,
+  clientesPrecargados,
+}) {
   const [correo, setCorreo] = useState('')
   const [contrasena, setContrasena] = useState('')
   const [idPlataforma, setIdPlataforma] = useState('')
@@ -66,12 +78,21 @@ export default function CuentaModal({ isOpen, onClose, onSubmit, cuenta }) {
   }, [isOpen, cuenta])
 
   async function cargarCatalogos() {
+    if (plataformasPrecargadas?.length) setPlataformas(plataformasPrecargadas)
+    if (clientesPrecargados?.length) setClientes(clientesPrecargados)
+
+    const faltaPlat = !plataformasPrecargadas?.length
+    const faltaCli = !clientesPrecargados?.length
     setCatalogosLoading(true)
     try {
       const [platRes, provRes, cliRes] = await Promise.all([
-        request('/catalogos/plataformas'),
-        request('/catalogos/proveedores'),
-        request('/clientes'),
+        faltaPlat
+          ? request('/catalogos/plataformas', { silent: true })
+          : Promise.resolve({ data: plataformasPrecargadas }),
+        request('/catalogos/proveedores', { silent: true }),
+        faltaCli
+          ? request('/clientes', { silent: true })
+          : Promise.resolve({ data: clientesPrecargados }),
       ])
       if (platRes.data) setPlataformas(platRes.data)
       if (provRes.data) setProveedores(provRes.data)
@@ -83,9 +104,12 @@ export default function CuentaModal({ isOpen, onClose, onSubmit, cuenta }) {
     }
   }
 
-  const maxPuestos = maxPuestosDe(plataformas.find((p) => p.id === idPlataforma))
+  const maxPuestos = useMemo(
+    () => maxPuestosDe(plataformas.find((p) => p.id === idPlataforma)),
+    [plataformas, idPlataforma]
+  )
 
-  function agregarPuesto() {
+  const agregarPuesto = useCallback(() => {
     setPuestos((prev) => {
       if (prev.length >= maxPuestos) return prev
       return [
@@ -93,17 +117,16 @@ export default function CuentaModal({ isOpen, onClose, onSubmit, cuenta }) {
         { id_usuario: '', pin: '', vencimiento_usuario: '', es_combo: false, valor_venta: '' },
       ]
     })
-  }
+  }, [maxPuestos])
 
   function eliminarPuesto(index) {
-    if (puestos.length === 1) return
-    setPuestos(puestos.filter((_, i) => i !== index))
+    setPuestos((prev) => (prev.length === 1 ? prev : prev.filter((_, i) => i !== index)))
   }
 
   function actualizarPuesto(index, campo, valor) {
-    const nuevosPuestos = [...puestos]
-    nuevosPuestos[index] = { ...nuevosPuestos[index], [campo]: valor }
-    setPuestos(nuevosPuestos)
+    setPuestos((prev) =>
+      prev.map((puesto, i) => (i === index ? { ...puesto, [campo]: valor } : puesto))
+    )
   }
 
   async function handleSubmit(e) {
@@ -167,8 +190,8 @@ export default function CuentaModal({ isOpen, onClose, onSubmit, cuenta }) {
               value={idPlataforma}
               onChange={setIdPlataforma}
               options={plataformas}
-              getOptionLabel={(opt) => opt.nombre_plat}
-              getOptionValue={(opt) => opt.id}
+              getOptionLabel={labelPlataforma}
+              getOptionValue={optionId}
               required={!esEdicion}
             />
             <AutocompleteField
@@ -178,8 +201,8 @@ export default function CuentaModal({ isOpen, onClose, onSubmit, cuenta }) {
               value={idProveedor}
               onChange={setIdProveedor}
               options={proveedores}
-              getOptionLabel={(opt) => opt.nombre_prov}
-              getOptionValue={(opt) => opt.id}
+              getOptionLabel={labelProveedor}
+              getOptionValue={optionId}
               required={!esEdicion}
             />
           </div>
@@ -275,8 +298,8 @@ export default function CuentaModal({ isOpen, onClose, onSubmit, cuenta }) {
                     value={puesto.id_usuario}
                     onChange={(val) => actualizarPuesto(index, 'id_usuario', val)}
                     options={clientes}
-                    getOptionLabel={(opt) => opt.nombre}
-                    getOptionValue={(opt) => opt.id}
+                    getOptionLabel={labelNombre}
+                    getOptionValue={optionId}
                   />
                   <InputField
                     id={`pin-${index}`}

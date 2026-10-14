@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { memo, useMemo, useState } from 'react'
 import {
   Copy, Check, Eye, EyeOff, Pencil, Trash2, Plus, Calendar, Banknote, StickyNote, Users,
 } from 'lucide-react'
@@ -10,7 +10,13 @@ import {
   ocupadosCuenta,
 } from '../../lib/cuentaEstado'
 
-export default function CuentaCard({ cuenta, onEditPuesto, onDeletePuesto, onEditCuenta, onDeleteCuenta, onNewPuesto }) {
+const ESTADO_COLORS = {
+  disponible: 'bg-green-500/20 text-green-400 border-green-500/30',
+  llena: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
+  vendida: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
+}
+
+function CuentaCard({ cuenta, onEditPuesto, onDeletePuesto, onEditCuenta, onDeleteCuenta, onNewPuesto }) {
   const [showPassword, setShowPassword] = useState(false)
   const [copiedEmail, setCopiedEmail] = useState(false)
   const [copiedPass, setCopiedPass] = useState(false)
@@ -68,16 +74,12 @@ export default function CuentaCard({ cuenta, onEditPuesto, onDeletePuesto, onEdi
     setShowPassword((prev) => !prev)
   }
 
-  function getEstadoColor(estado) {
-    const colors = {
-      disponible: 'bg-green-500/20 text-green-400 border-green-500/30',
-      llena: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-      vendida: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-    }
-    return colors[estado] || colors.disponible
-  }
-
-  const puestos = cuenta.usuarios_cuenta || cuenta.usuario_cuenta || []
+  const puestos = useMemo(
+    () => cuenta.usuarios_cuenta || cuenta.usuario_cuenta || [],
+    [cuenta.usuarios_cuenta, cuenta.usuario_cuenta]
+  )
+  const estado = etiquetaEstado(cuenta.estado)
+  const llena = cuentaLlena(cuenta)
   const displayedPassword = showPassword
     ? (passwordValue || cuenta.contrasena_recuperable || 'No disponible')
     : '••••••••'
@@ -111,8 +113,8 @@ export default function CuentaCard({ cuenta, onEditPuesto, onDeletePuesto, onEdi
               </p>
             </div>
           </div>
-          <span className={`px-2 py-1 rounded-full text-xs font-medium border shrink-0 ${getEstadoColor(etiquetaEstado(cuenta.estado))}`}>
-            {etiquetaEstado(cuenta.estado)}
+          <span className={`px-2 py-1 rounded-full text-xs font-medium border shrink-0 ${ESTADO_COLORS[estado] || ESTADO_COLORS.disponible}`}>
+            {estado}
           </span>
         </div>
 
@@ -173,11 +175,11 @@ export default function CuentaCard({ cuenta, onEditPuesto, onDeletePuesto, onEdi
           <button
             type="button"
             onClick={() => onNewPuesto?.(cuenta)}
-            disabled={cuentaLlena(cuenta)}
+            disabled={llena}
             className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <Plus className="h-3 w-3" />
-            {cuentaLlena(cuenta) ? 'Llena' : 'Agregar puesto'}
+            {llena ? 'Llena' : 'Agregar puesto'}
           </button>
         </div>
 
@@ -273,3 +275,5 @@ export default function CuentaCard({ cuenta, onEditPuesto, onDeletePuesto, onEdi
     </div>
   )
 }
+
+export default memo(CuentaCard)
