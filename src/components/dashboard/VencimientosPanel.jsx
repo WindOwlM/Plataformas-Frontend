@@ -26,7 +26,13 @@ const ItemRow = memo(function ItemRow({ item }) {
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-white font-medium truncate">{item.nombre}</p>
-          <span className="text-[11px] uppercase tracking-wide text-gray-500">
+          <span
+            className={`inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium uppercase tracking-wide border ${
+              item.tipo === 'usuario'
+                ? 'bg-green-500/20 text-green-400 border-green-500/30'
+                : 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+            }`}
+          >
             {item.tipo === 'usuario' ? 'Cliente' : 'Cuenta'}
           </span>
         </div>
