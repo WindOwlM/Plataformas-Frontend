@@ -1,10 +1,15 @@
-import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown, ChevronRight, Loader2, MonitorPlay, Pencil, Plus, Trash2, UserPlus } from 'lucide-react'
 import { useApi } from '../hooks/useApi'
 import { fieldClass } from '../components/ui/fieldStyles'
 import PuestoModal from '../components/dashboard/PuestoModal'
 import CuentaModal from '../components/dashboard/CuentaModal'
-import AutocompleteField, { labelCliente, optionId } from '../components/ui/AutocompleteField'
+import AutocompleteField, {
+  labelCliente,
+  labelCorreo,
+  optionCorreo,
+  optionId,
+} from '../components/ui/AutocompleteField'
 import Button from '../components/ui/Button'
 import QuitarClienteModal from '../components/dashboard/QuitarClienteModal'
 import ConfirmModal from '../components/ui/ConfirmModal'
@@ -29,6 +34,8 @@ export default function CuentasPage() {
   const [plataformaId, setPlataformaId] = useState('')
   const [clientes, setClientes] = useState([])
   const [clienteId, setClienteId] = useState('')
+  const [correoFiltro, setCorreoFiltro] = useState('')
+  const [sugerenciasCuenta, setSugerenciasCuenta] = useState([])
   const [cuentas, setCuentas] = useState([])
   const [puestoCuenta, setPuestoCuenta] = useState(null)
   const [puestoEditando, setPuestoEditando] = useState(null)
@@ -39,7 +46,7 @@ export default function CuentasPage() {
   const [cuentaAEliminar, setCuentaAEliminar] = useState(null)
 
   const cargarCuentas = useCallback(async () => {
-    if (!plataformaId && !clienteId) {
+    if (!plataformaId && !clienteId && !correoFiltro) {
       setCuentas([])
       return
     }
@@ -47,11 +54,12 @@ export default function CuentasPage() {
     const params = new URLSearchParams()
     if (plataformaId && plataformaId !== 'todas') params.append('plataforma', plataformaId)
     if (clienteId) params.append('id_usuario', clienteId)
+    if (correoFiltro) params.append('correo', correoFiltro)
 
     const query = params.toString() ? `?${params.toString()}` : ''
     const { data } = await request(`/cuentas${query}`)
     setCuentas(data || [])
-  }, [plataformaId, clienteId, request])
+  }, [plataformaId, clienteId, correoFiltro, request])
 
   useEffect(() => {
     request('/catalogos/plataformas', { silent: true }).then(({ data }) => {
@@ -65,6 +73,26 @@ export default function CuentasPage() {
   useEffect(() => {
     cargarCuentas()
   }, [cargarCuentas])
+
+  const buscaCuentaTimer = useRef(null)
+
+  const onQueryCuenta = useCallback((texto) => {
+    window.clearTimeout(buscaCuentaTimer.current)
+    const q = texto.trim()
+    if (q.length < 2) {
+      setSugerenciasCuenta([])
+      return
+    }
+
+    buscaCuentaTimer.current = window.setTimeout(() => {
+      const params = new URLSearchParams({ correo: q, limit: '8' })
+      if (plataformaId && plataformaId !== 'todas') params.append('plataforma', plataformaId)
+      if (clienteId) params.append('id_usuario', clienteId)
+      request(`/cuentas?${params.toString()}`, { silent: true }).then(({ data }) => {
+        setSugerenciasCuenta(data || [])
+      })
+    }, 280)
+  }, [plataformaId, clienteId, request])
 
   const guardarPuesto = useCallback(async (puestoData) => {
     const cuentaId = puestoCuenta?.id || puestoData.id_cuenta
@@ -149,18 +177,31 @@ export default function CuentasPage() {
   }, [cuentaAEliminar, request, cargarCuentas])
 
   const plataformaNombre = useMemo(() => {
-    if (plataformaId === 'todas' || (!plataformaId && clienteId)) return 'Todas las plataformas'
+    if (plataformaId === 'todas' || (!plataformaId && (clienteId || correoFiltro))) {
+      return 'Todas las plataformas'
+    }
     return plataformas.find((p) => p.id === plataformaId)?.nombre_plat || ''
-  }, [plataformaId, plataformas, clienteId])
+  }, [plataformaId, plataformas, clienteId, correoFiltro])
 
   const clienteNombre = useMemo(
     () => clientes.find((c) => c.id === clienteId)?.nombre,
     [clientes, clienteId]
   )
 
+  const opcionesCuenta = useMemo(() => {
+    if (correoFiltro && !sugerenciasCuenta.some((c) => c.correo === correoFiltro)) {
+      return [{ id: correoFiltro, correo: correoFiltro }, ...sugerenciasCuenta]
+    }
+    return sugerenciasCuenta
+  }, [correoFiltro, sugerenciasCuenta])
+
   const showPlataforma = plataformaId === 'todas' || !plataformaId
-  const tituloLista = clienteNombre ? `Cuentas de ${clienteNombre}` : plataformaNombre
-  const sinFiltro = !plataformaId && !clienteId
+  const tituloLista = clienteNombre
+    ? `Cuentas de ${clienteNombre}`
+    : correoFiltro
+      ? correoFiltro
+      : plataformaNombre
+  const sinFiltro = !plataformaId && !clienteId && !correoFiltro
   const colSpan = showPlataforma ? 8 : 7
 
   const filas = useMemo(
@@ -179,7 +220,7 @@ export default function CuentasPage() {
         <div>
           <h2 className="text-xl font-bold text-white">Cuentas</h2>
           <p className="text-sm text-gray-400 mt-1">
-            Elige una plataforma o un cliente para ver las cuentas
+            Filtra por plataforma, correo de la cuenta o cliente
           </p>
         </div>
         <Button onClick={abrirNuevaCuenta}>
@@ -189,7 +230,7 @@ export default function CuentasPage() {
       </div>
 
       <div className="bg-gray-800 border border-gray-700 rounded-xl p-4 sm:p-5">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label htmlFor="plataforma" className="block text-sm font-medium text-gray-300 mb-2">
               Plataforma
@@ -210,6 +251,18 @@ export default function CuentasPage() {
             </select>
           </div>
           <AutocompleteField
+            id="cuenta-filtro"
+            label="Cuenta"
+            placeholder="Buscar por correo de la cuenta..."
+            value={correoFiltro}
+            onChange={setCorreoFiltro}
+            options={opcionesCuenta}
+            getOptionLabel={labelCorreo}
+            getOptionValue={optionCorreo}
+            onQueryChange={onQueryCuenta}
+            filterLocal={false}
+          />
+          <AutocompleteField
             id="cliente-filtro"
             label="Cliente"
             placeholder="Buscar cliente para ver sus cuentas..."
@@ -225,7 +278,7 @@ export default function CuentasPage() {
       {sinFiltro ? (
         <div className="bg-gray-800 rounded-xl border border-gray-700 p-12 text-center">
           <MonitorPlay className="h-10 w-10 text-gray-600 mx-auto mb-3" />
-          <p className="text-gray-400">Selecciona una plataforma o un cliente para ver las cuentas</p>
+          <p className="text-gray-400">Selecciona una plataforma, un correo o un cliente para ver las cuentas</p>
         </div>
       ) : loading && cuentas.length === 0 ? (
         <div className="flex items-center justify-center py-16">
@@ -236,7 +289,9 @@ export default function CuentasPage() {
           <p className="text-gray-400">
             {clienteNombre
               ? `${clienteNombre} no tiene cuentas asignadas`
-              : `No hay cuentas para ${plataformaNombre}`}
+              : correoFiltro
+                ? `No hay cuentas para ${correoFiltro}`
+                : `No hay cuentas para ${plataformaNombre}`}
           </p>
         </div>
       ) : (

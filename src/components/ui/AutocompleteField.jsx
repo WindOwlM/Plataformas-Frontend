@@ -22,6 +22,14 @@ export function optionId(opt) {
   return opt.id
 }
 
+export function labelCorreo(opt) {
+  return opt.correo || ''
+}
+
+export function optionCorreo(opt) {
+  return opt.correo || ''
+}
+
 function defaultGetOptionLabel(opt) {
   return opt.nombre || opt.nombre_plat || opt.nombre_prov || ''
 }
@@ -37,6 +45,8 @@ function AutocompleteField({
   getOptionValue = optionId,
   required = false,
   icon,
+  onQueryChange,
+  filterLocal = true,
 }) {
   const [query, setQuery] = useState('')
   const [isOpen, setIsOpen] = useState(false)
@@ -50,10 +60,14 @@ function AutocompleteField({
   )
 
   const filteredOptions = useMemo(() => {
-    if (!query) return options
+    if (!filterLocal || !query) return options
     const q = query.toLowerCase()
     return options.filter((opt) => getOptionLabel(opt).toLowerCase().includes(q))
-  }, [options, query, getOptionLabel])
+  }, [options, query, getOptionLabel, filterLocal])
+
+  useEffect(() => {
+    onQueryChange?.(query)
+  }, [query, onQueryChange])
 
   useEffect(() => {
     function handleClickOutside(e) {
