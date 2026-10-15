@@ -51,7 +51,7 @@ export default function CuentaModal({
         setFechaVencimiento(cuenta.fecha_vencimiento || '')
         setNotas(cuenta.notas || '')
         setContrasena('')
-        const puestosExistentes = cuenta.usuarios_cuenta || cuenta.usuario_cuenta || []
+        const puestosExistentes = cuenta.usuario_cuenta || cuenta.usuarios_cuenta || []
         if (puestosExistentes.length > 0) {
           setPuestos(puestosExistentes.map((p) => ({
             id: p.id,
@@ -153,8 +153,6 @@ export default function CuentaModal({
       fecha_vencimiento: fechaVencimiento || null,
       notas: notas || null,
       puestos: puestosPayload,
-      usuarios_cuenta: puestosPayload,
-      usuario_cuenta: puestosPayload,
     }
 
     if (contrasena.trim()) {

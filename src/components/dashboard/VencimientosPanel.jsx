@@ -2,7 +2,7 @@ import { memo, useEffect, useMemo, useState } from 'react'
 import { Clock, CalendarClock, CircleAlert, Loader2 } from 'lucide-react'
 import { useApi } from '../../hooks/useApi'
 import StatCard from './StatCard'
-import { buildVencimientoItems, formatFecha } from '../../lib/vencimientos'
+import { formatFecha } from '../../lib/vencimientos'
 
 const bucketMeta = {
   manana: {
@@ -57,22 +57,27 @@ const ItemRow = memo(function ItemRow({ item }) {
 
 export default function VencimientosPanel() {
   const { request, loading } = useApi()
-  const [cuentas, setCuentas] = useState([])
+  const [payload, setPayload] = useState({ items: [], counts: { hoy: 0, manana: 0, vencida: 0 } })
   const [filtro, setFiltro] = useState(null)
 
   useEffect(() => {
-    request('/cuentas').then(({ data }) => {
-      if (data) setCuentas(data)
+    request('/cuentas/vencimientos').then(({ data }) => {
+      if (data) {
+        setPayload({
+          items: data.items || [],
+          counts: data.counts || { hoy: 0, manana: 0, vencida: 0 },
+        })
+      }
     })
   }, [request])
 
-  const items = useMemo(() => buildVencimientoItems(cuentas), [cuentas])
+  const items = payload.items
   const grupos = useMemo(() => ({
     hoy: items.filter((i) => i.bucket === 'hoy'),
     manana: items.filter((i) => i.bucket === 'manana'),
     vencida: items.filter((i) => i.bucket === 'vencida'),
   }), [items])
-  const { hoy, manana, vencida: vencidas } = grupos
+  const counts = payload.counts
 
   function seleccionar(bucket) {
     setFiltro((prev) => (prev === bucket ? null : bucket))
@@ -93,7 +98,7 @@ export default function VencimientosPanel() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard
           title="Vence mañana"
-          value={String(manana.length)}
+          value={String(counts.manana)}
           color="yellow"
           selected={filtro === 'manana'}
           onClick={() => seleccionar('manana')}
@@ -101,7 +106,7 @@ export default function VencimientosPanel() {
         />
         <StatCard
           title="Vence hoy"
-          value={String(hoy.length)}
+          value={String(counts.hoy)}
           color="indigo"
           selected={filtro === 'hoy'}
           onClick={() => seleccionar('hoy')}
@@ -109,7 +114,7 @@ export default function VencimientosPanel() {
         />
         <StatCard
           title="Ya vencidas"
-          value={String(vencidas.length)}
+          value={String(counts.vencida)}
           color="red"
           selected={filtro === 'vencida'}
           onClick={() => seleccionar('vencida')}
@@ -117,7 +122,7 @@ export default function VencimientosPanel() {
         />
       </div>
 
-      {loading && cuentas.length === 0 ? (
+      {loading && items.length === 0 ? (
         <div className="flex items-center justify-center py-16">
           <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
         </div>

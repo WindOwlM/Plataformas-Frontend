@@ -7,24 +7,15 @@ export function maxPuestosDe(plataforma) {
   return DEFAULT_MAX_PUESTOS
 }
 
-export function maxPuestosCuenta(cuenta, plataformas = []) {
-  const plat =
-    cuenta?.plataforma ||
-    plataformas.find((p) => p.id === cuenta?.id_plataforma)
-  if (cuenta?.max_puestos) return Number(cuenta.max_puestos)
-  return maxPuestosDe(plat)
+export function puestosDe(cuenta) {
+  return cuenta?.usuario_cuenta || cuenta?.usuarios_cuenta || []
 }
 
-export function ocupadosCuenta(cuenta) {
-  if (cuenta?.ocupados != null) return Number(cuenta.ocupados)
-  return (cuenta?.usuarios_cuenta || cuenta?.usuario_cuenta || []).length
-}
-
-export function cuentaLlena(cuenta, plataformas = []) {
-  return ocupadosCuenta(cuenta) >= maxPuestosCuenta(cuenta, plataformas)
+export function cuentaLlena(cuenta) {
+  return cuenta?.estado === 'llena' || cuenta?.estado === 'vendida'
 }
 
 export function etiquetaEstado(estado) {
-  if (estado === 'vendida' || estado === 'llena') return 'llena'
+  if (estado === 'vendida') return 'llena'
   return estado || 'disponible'
 }

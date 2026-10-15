@@ -11,8 +11,7 @@ import ConfirmModal from '../components/ui/ConfirmModal'
 import {
   cuentaLlena,
   etiquetaEstado,
-  maxPuestosCuenta,
-  ocupadosCuenta,
+  puestosDe,
 } from '../lib/cuentaEstado'
 
 function estadoBadge(estado) {
@@ -51,14 +50,7 @@ export default function CuentasPage() {
 
     const query = params.toString() ? `?${params.toString()}` : ''
     const { data } = await request(`/cuentas${query}`)
-    const lista = data || []
-    setCuentas(
-      clienteId
-        ? lista.filter((c) =>
-            (c.usuario_cuenta || c.usuarios_cuenta || []).some((p) => p.id_usuario === clienteId)
-          )
-        : lista
-    )
+    setCuentas(data || [])
   }, [plataformaId, clienteId, request])
 
   useEffect(() => {
@@ -175,7 +167,7 @@ export default function CuentasPage() {
     () =>
       cuentas.map((cuenta) => ({
         cuenta,
-        puestos: cuenta.usuarios_cuenta || cuenta.usuario_cuenta || [],
+        puestos: puestosDe(cuenta),
         expanded: clienteId ? true : expandedIds.has(cuenta.id),
       })),
     [cuentas, clienteId, expandedIds]
@@ -380,7 +372,7 @@ const FragmentRow = memo(function FragmentRow({
           {cuenta.precio_costo != null ? `$${cuenta.precio_costo}` : '—'}
         </td>
         <td className="px-4 py-3 text-gray-300">
-          {ocupadosCuenta(cuenta)}/{maxPuestosCuenta(cuenta)}
+          {cuenta.ocupados ?? puestos.length}/{cuenta.max_puestos ?? 5}
         </td>
         <td className="px-4 py-3">
           <div className="flex items-center justify-end gap-2">

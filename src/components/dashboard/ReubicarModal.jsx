@@ -4,7 +4,7 @@ import Button from '../ui/Button'
 import InputField from '../ui/InputField'
 import Modal from '../ui/Modal'
 import { fieldClass } from '../ui/fieldStyles'
-import { cuentaLlena, etiquetaEstado, maxPuestosCuenta, ocupadosCuenta } from '../../lib/cuentaEstado'
+import { cuentaLlena, etiquetaEstado } from '../../lib/cuentaEstado'
 
 export default function ReubicarModal({ isOpen, onClose, onSubmit, pendiente }) {
   const { request } = useApi()
@@ -102,7 +102,7 @@ export default function ReubicarModal({ isOpen, onClose, onSubmit, pendiente }) 
             <option value="">Selecciona cuenta</option>
             {cuentasFiltradas.map((c) => (
               <option key={c.id} value={c.id} disabled={cuentaLlena(c)}>
-                {c.correo} ({etiquetaEstado(c.estado)} · {ocupadosCuenta(c)}/{maxPuestosCuenta(c)})
+                {c.correo} ({etiquetaEstado(c.estado)} · {c.ocupados ?? 0}/{c.max_puestos ?? 5})
               </option>
             ))}
           </select>
