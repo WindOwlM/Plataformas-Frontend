@@ -3,6 +3,7 @@ import { Clock, CalendarClock, CircleAlert, Loader2 } from 'lucide-react'
 import { useApi } from '../../hooks/useApi'
 import StatCard from './StatCard'
 import { formatFecha } from '../../lib/vencimientos'
+import { clavePlataforma } from '../../lib/agruparCuentas'
 
 const bucketMeta = {
   manana: {
@@ -19,31 +20,52 @@ const bucketMeta = {
   },
 }
 
+const tipoBadge = {
+  combo: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40',
+  usuario: 'bg-green-500/20 text-green-400 border-green-500/30',
+  cuenta: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+}
+
+const tipoLabel = {
+  combo: 'Combo',
+  usuario: 'Cliente',
+  cuenta: 'Cuenta',
+}
+
 const ItemRow = memo(function ItemRow({ item }) {
   const meta = bucketMeta[item.bucket]
+  const esCombo = item.tipo === 'combo'
+  const plataformas = item.plataformas?.length
+    ? item.plataformas.join(' · ')
+    : item.plataforma
+
   return (
-    <div className="px-4 py-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 hover:bg-gray-700/40 transition-colors">
+    <div
+      className={`px-4 py-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 transition-colors ${
+        esCombo ? 'bg-yellow-500/5 hover:bg-yellow-500/10' : 'hover:bg-gray-700/40'
+      }`}
+    >
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-white font-medium truncate">{item.nombre}</p>
           <span
             className={`inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium uppercase tracking-wide border ${
-              item.tipo === 'usuario'
-                ? 'bg-green-500/20 text-green-400 border-green-500/30'
-                : 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+              tipoBadge[item.tipo] || tipoBadge.usuario
             }`}
           >
-            {item.tipo === 'usuario' ? 'Cliente' : 'Cuenta'}
+            {tipoLabel[item.tipo] || 'Cliente'}
           </span>
         </div>
         <p className="text-sm text-gray-400 truncate">
-          {item.tipo === 'usuario' ? item.correo : item.plataforma}
-          {item.plataforma && item.tipo === 'usuario' ? ` · ${item.plataforma}` : ''}
-          {item.telefono ? ` · ${item.telefono}` : ''}
+          {esCombo
+            ? plataformas
+            : item.tipo === 'usuario'
+              ? `${item.correo}${item.plataforma ? ` · ${item.plataforma}` : ''}${item.telefono ? ` · ${item.telefono}` : ''}`
+              : item.plataforma}
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-2 shrink-0">
-        {item.pin ? (
+        {!esCombo && item.pin ? (
           <span className="text-xs font-mono text-gray-400">PIN {item.pin}</span>
         ) : null}
         <span className="text-xs text-gray-400">{formatFecha(item.fecha)}</span>
@@ -72,11 +94,35 @@ export default function VencimientosPanel() {
   }, [request])
 
   const items = payload.items
-  const grupos = useMemo(() => ({
-    hoy: items.filter((i) => i.bucket === 'hoy'),
-    manana: items.filter((i) => i.bucket === 'manana'),
-    vencida: items.filter((i) => i.bucket === 'vencida'),
-  }), [items])
+  const grupos = useMemo(() => {
+    function organizar(lista) {
+      const combos = lista
+        .filter((i) => i.tipo === 'combo')
+        .sort((a, b) => String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es'))
+      const resto = lista.filter((i) => i.tipo !== 'combo')
+      const ordenados = [...resto].sort((a, b) => {
+        const plat = clavePlataforma(a.plataforma).localeCompare(clavePlataforma(b.plataforma), 'es')
+        if (plat) return plat
+        return String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es')
+      })
+      const map = new Map()
+      for (const item of ordenados) {
+        const nombre = item.plataforma || 'Sin plataforma'
+        if (!map.has(nombre)) map.set(nombre, [])
+        map.get(nombre).push(item)
+      }
+      return {
+        combos,
+        secciones: [...map.entries()].map(([plataforma, filas]) => ({ plataforma, filas })),
+      }
+    }
+
+    return {
+      hoy: organizar(items.filter((i) => i.bucket === 'hoy')),
+      manana: organizar(items.filter((i) => i.bucket === 'manana')),
+      vencida: organizar(items.filter((i) => i.bucket === 'vencida')),
+    }
+  }, [items])
   const counts = payload.counts
 
   function seleccionar(bucket) {
@@ -84,7 +130,9 @@ export default function VencimientosPanel() {
   }
 
   const bucketsVisibles = filtro ? [filtro] : ['hoy', 'manana', 'vencida']
-  const listaFiltrada = filtro ? grupos[filtro] : items
+  const listaFiltrada = filtro
+    ? [...grupos[filtro].combos, ...grupos[filtro].secciones.flatMap((s) => s.filas)]
+    : items
 
   return (
     <div className="space-y-6">
@@ -136,19 +184,43 @@ export default function VencimientosPanel() {
         </div>
       ) : (
         bucketsVisibles.map((bucket) => {
-          const group = grupos[bucket]
-          if (group.length === 0) return null
+          const grupo = grupos[bucket]
+          const total = grupo.combos.length + grupo.secciones.reduce((n, s) => n + s.filas.length, 0)
+          if (total === 0) return null
           return (
             <div key={bucket} className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
               <div className="px-4 py-3 border-b border-gray-700 flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-white">{bucketMeta[bucket].title}</h3>
-                <span className="text-xs text-gray-500">{group.length}</span>
+                <span className="text-xs text-gray-500">{total}</span>
               </div>
-              <div className="divide-y divide-gray-700">
-                {group.map((item) => (
-                  <ItemRow key={item.id} item={item} />
-                ))}
-              </div>
+              {grupo.combos.length > 0 && (
+                <div className="border-b border-gray-700">
+                  <div className="px-4 py-2 bg-yellow-500/10 text-xs font-semibold uppercase tracking-wide text-yellow-300">
+                    Combos
+                    <span className="ml-2 font-normal normal-case tracking-normal text-yellow-300/80">
+                      {grupo.combos.length}
+                    </span>
+                  </div>
+                  <div className="divide-y divide-yellow-500/10">
+                    {grupo.combos.map((item) => (
+                      <ItemRow key={item.id} item={item} />
+                    ))}
+                  </div>
+                </div>
+              )}
+              {grupo.secciones.map((seccion) => (
+                <div key={`${bucket}-${seccion.plataforma}`} className="border-b border-gray-700 last:border-b-0">
+                  <div className="px-4 py-2 bg-gray-900/50 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                    {seccion.plataforma}
+                    <span className="ml-2 font-normal normal-case tracking-normal">{seccion.filas.length}</span>
+                  </div>
+                  <div className="divide-y divide-gray-700">
+                    {seccion.filas.map((item) => (
+                      <ItemRow key={item.id} item={item} />
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           )
         })

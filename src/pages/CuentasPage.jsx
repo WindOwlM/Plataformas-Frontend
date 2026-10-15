@@ -18,6 +18,7 @@ import {
   etiquetaEstado,
   puestosDe,
 } from '../lib/cuentaEstado'
+import { esComboPuesto, seccionesPorPlataforma } from '../lib/agruparCuentas'
 
 function estadoBadge(estado) {
   const colors = {
@@ -195,23 +196,27 @@ export default function CuentasPage() {
     return sugerenciasCuenta
   }, [correoFiltro, sugerenciasCuenta])
 
-  const showPlataforma = plataformaId === 'todas' || !plataformaId
   const tituloLista = clienteNombre
     ? `Cuentas de ${clienteNombre}`
     : correoFiltro
       ? correoFiltro
       : plataformaNombre
   const sinFiltro = !plataformaId && !clienteId && !correoFiltro
-  const colSpan = showPlataforma ? 8 : 7
 
-  const filas = useMemo(
+  const secciones = useMemo(() => seccionesPorPlataforma(cuentas), [cuentas])
+  const colSpan = 7
+
+  const filasPorSeccion = useMemo(
     () =>
-      cuentas.map((cuenta) => ({
-        cuenta,
-        puestos: puestosDe(cuenta),
-        expanded: clienteId ? true : expandedIds.has(cuenta.id),
+      secciones.map((seccion) => ({
+        ...seccion,
+        filas: seccion.cuentas.map((cuenta) => ({
+          cuenta,
+          puestos: puestosDe(cuenta),
+          expanded: clienteId ? true : expandedIds.has(cuenta.id),
+        })),
       })),
-    [cuentas, clienteId, expandedIds]
+    [secciones, clienteId, expandedIds]
   )
 
   return (
@@ -295,48 +300,55 @@ export default function CuentasPage() {
           </p>
         </div>
       ) : (
-        <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-700 flex items-center justify-between">
+        <div className="space-y-4">
+          <div className="flex items-center justify-between px-1">
             <p className="text-sm text-gray-300 font-medium">{tituloLista}</p>
             <p className="text-xs text-gray-500">{cuentas.length} cuenta{cuentas.length === 1 ? '' : 's'}</p>
           </div>
-          <div className="overflow-x-auto custom-scrollbar">
-            <table className="w-full text-sm text-left min-w-[720px]">
-              <thead className="bg-gray-900/60 text-gray-400 text-xs uppercase tracking-wide">
-                <tr>
-                  <th className="px-4 py-3 font-medium">Correo</th>
-                  {showPlataforma && (
-                    <th className="px-4 py-3 font-medium">Plataforma</th>
-                  )}
-                  <th className="px-4 py-3 font-medium">Proveedor</th>
-                  <th className="px-4 py-3 font-medium">Estado</th>
-                  <th className="px-4 py-3 font-medium">Vence</th>
-                  <th className="px-4 py-3 font-medium">Costo</th>
-                  <th className="px-4 py-3 font-medium">Puestos</th>
-                  <th className="px-4 py-3 font-medium"> </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-700">
-                {filas.map(({ cuenta, puestos, expanded }) => (
-                  <FragmentRow
-                    key={cuenta.id}
-                    cuenta={cuenta}
-                    puestos={puestos}
-                    expanded={expanded}
-                    showPlataforma={showPlataforma}
-                    clienteId={clienteId}
-                    colSpan={colSpan}
-                    onToggle={toggleExpand}
-                    onAsignar={abrirAsignar}
-                    onEditarCuenta={abrirEditarCuenta}
-                    onEditarPuesto={abrirEditarPuesto}
-                    onQuitar={handleQuitar}
-                    onEliminarCuenta={setCuentaAEliminar}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
+          {filasPorSeccion.map((seccion) => (
+            <div key={seccion.id} className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
+              <div className="px-4 py-3 border-b border-gray-700 flex items-center justify-between bg-gray-900/40">
+                <p className="text-sm text-white font-semibold">{seccion.nombre}</p>
+                <span className="text-xs text-gray-500">
+                  {seccion.filas.length} cuenta{seccion.filas.length === 1 ? '' : 's'}
+                </span>
+              </div>
+              <div className="overflow-x-auto custom-scrollbar">
+                <table className="w-full text-sm text-left min-w-[720px]">
+                  <thead className="bg-gray-900/60 text-gray-400 text-xs uppercase tracking-wide">
+                    <tr>
+                      <th className="px-4 py-3 font-medium">Correo</th>
+                      <th className="px-4 py-3 font-medium">Proveedor</th>
+                      <th className="px-4 py-3 font-medium">Estado</th>
+                      <th className="px-4 py-3 font-medium">Vence</th>
+                      <th className="px-4 py-3 font-medium">Costo</th>
+                      <th className="px-4 py-3 font-medium">Puestos</th>
+                      <th className="px-4 py-3 font-medium"> </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-700">
+                    {seccion.filas.map(({ cuenta, puestos, expanded }) => (
+                      <FragmentRow
+                        key={cuenta.id}
+                        cuenta={cuenta}
+                        puestos={puestos}
+                        expanded={expanded}
+                        cuentas={cuentas}
+                        clienteId={clienteId}
+                        colSpan={colSpan}
+                        onToggle={toggleExpand}
+                        onAsignar={abrirAsignar}
+                        onEditarCuenta={abrirEditarCuenta}
+                        onEditarPuesto={abrirEditarPuesto}
+                        onQuitar={handleQuitar}
+                        onEliminarCuenta={setCuentaAEliminar}
+                      />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
@@ -390,7 +402,7 @@ const FragmentRow = memo(function FragmentRow({
   cuenta,
   puestos,
   expanded,
-  showPlataforma,
+  cuentas,
   clienteId,
   colSpan,
   onToggle,
@@ -407,11 +419,6 @@ const FragmentRow = memo(function FragmentRow({
     <>
       <tr className="hover:bg-gray-700/40 transition-colors">
         <td className="px-4 py-3 text-white font-medium">{cuenta.correo}</td>
-        {showPlataforma && (
-          <td className="px-4 py-3 text-gray-300">
-            {cuenta.plataforma?.nombre_plat || '—'}
-          </td>
-        )}
         <td className="px-4 py-3 text-gray-300">
           {cuenta.proveedor?.nombre_prov || '—'}
         </td>
@@ -478,7 +485,14 @@ const FragmentRow = memo(function FragmentRow({
                       return (
                         <tr key={puesto.id || index} className={esFiltro ? 'bg-indigo-500/10' : ''}>
                           <td className="px-3 py-2 text-white">
-                            {puesto.usuario?.nombre || 'Sin cliente'}
+                            <span className="inline-flex items-center gap-2 flex-wrap">
+                              {puesto.usuario?.nombre || 'Sin cliente'}
+                              {esComboPuesto(puesto, cuentas) && (
+                                <span className="px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wide bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                                  Combo
+                                </span>
+                              )}
+                            </span>
                           </td>
                           <td className="px-3 py-2 text-gray-400">
                             {puesto.usuario?.numero_telefono || '—'}
