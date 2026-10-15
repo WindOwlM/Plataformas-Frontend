@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
-import { ChevronDown, ChevronRight, Loader2, MonitorPlay, Plus, Trash2, UserPlus } from 'lucide-react'
+import { ChevronDown, ChevronRight, Loader2, MonitorPlay, Pencil, Plus, Trash2, UserPlus } from 'lucide-react'
 import { useApi } from '../hooks/useApi'
 import { fieldClass } from '../components/ui/fieldStyles'
 import PuestoModal from '../components/dashboard/PuestoModal'
@@ -32,8 +32,10 @@ export default function CuentasPage() {
   const [clienteId, setClienteId] = useState('')
   const [cuentas, setCuentas] = useState([])
   const [puestoCuenta, setPuestoCuenta] = useState(null)
+  const [puestoEditando, setPuestoEditando] = useState(null)
   const [expandedIds, setExpandedIds] = useState(() => new Set())
   const [isCuentaModalOpen, setIsCuentaModalOpen] = useState(false)
+  const [cuentaEditando, setCuentaEditando] = useState(null)
   const [quitar, setQuitar] = useState(null)
   const [cuentaAEliminar, setCuentaAEliminar] = useState(null)
 
@@ -76,10 +78,15 @@ export default function CuentasPage() {
     const cuentaId = puestoCuenta?.id || puestoData.id_cuenta
     if (!cuentaId) return false
 
-    const result = await request(`/cuentas/${cuentaId}/puestos`, {
-      method: 'POST',
-      body: JSON.stringify(puestoData),
-    })
+    const result = puestoData.id
+      ? await request(`/cuentas/${cuentaId}/puestos/${puestoData.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify(puestoData),
+        })
+      : await request(`/cuentas/${cuentaId}/puestos`, {
+          method: 'POST',
+          body: JSON.stringify(puestoData),
+        })
     if (result.error) return false
     await cargarCuentas()
     return true
@@ -94,14 +101,40 @@ export default function CuentasPage() {
   }, [quitar, request, cargarCuentas])
 
   const guardarCuenta = useCallback(async (cuentaData) => {
-    const result = await request('/cuentas/crear', {
-      method: 'POST',
-      body: JSON.stringify(cuentaData),
-    })
+    const result = cuentaEditando?.id
+      ? await request(`/cuentas/${cuentaEditando.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify(cuentaData),
+        })
+      : await request('/cuentas/crear', {
+          method: 'POST',
+          body: JSON.stringify(cuentaData),
+        })
     if (result.error) return
     setIsCuentaModalOpen(false)
+    setCuentaEditando(null)
     await cargarCuentas()
-  }, [request, cargarCuentas])
+  }, [cuentaEditando, request, cargarCuentas])
+
+  const abrirNuevaCuenta = useCallback(() => {
+    setCuentaEditando(null)
+    setIsCuentaModalOpen(true)
+  }, [])
+
+  const abrirEditarCuenta = useCallback((cuenta) => {
+    setCuentaEditando(cuenta)
+    setIsCuentaModalOpen(true)
+  }, [])
+
+  const abrirAsignar = useCallback((cuenta) => {
+    setPuestoEditando(null)
+    setPuestoCuenta(cuenta)
+  }, [])
+
+  const abrirEditarPuesto = useCallback((cuenta, puesto) => {
+    setPuestoCuenta(cuenta)
+    setPuestoEditando(puesto)
+  }, [])
 
   const toggleExpand = useCallback((id) => {
     setExpandedIds((prev) => {
@@ -157,7 +190,7 @@ export default function CuentasPage() {
             Elige una plataforma o un cliente para ver las cuentas
           </p>
         </div>
-        <Button onClick={() => setIsCuentaModalOpen(true)}>
+        <Button onClick={abrirNuevaCuenta}>
           <Plus className="h-4 w-4" />
           Nueva cuenta
         </Button>
@@ -247,7 +280,9 @@ export default function CuentasPage() {
                     clienteId={clienteId}
                     colSpan={colSpan}
                     onToggle={toggleExpand}
-                    onAsignar={setPuestoCuenta}
+                    onAsignar={abrirAsignar}
+                    onEditarCuenta={abrirEditarCuenta}
+                    onEditarPuesto={abrirEditarPuesto}
                     onQuitar={handleQuitar}
                     onEliminarCuenta={setCuentaAEliminar}
                   />
@@ -260,16 +295,24 @@ export default function CuentasPage() {
 
       <PuestoModal
         isOpen={!!puestoCuenta}
-        onClose={() => setPuestoCuenta(null)}
+        onClose={() => {
+          setPuestoCuenta(null)
+          setPuestoEditando(null)
+        }}
         onSubmit={guardarPuesto}
         cuenta={puestoCuenta}
+        puesto={puestoEditando}
         clientesPrecargados={clientes}
       />
 
       <CuentaModal
         isOpen={isCuentaModalOpen}
-        onClose={() => setIsCuentaModalOpen(false)}
+        onClose={() => {
+          setIsCuentaModalOpen(false)
+          setCuentaEditando(null)
+        }}
         onSubmit={guardarCuenta}
+        cuenta={cuentaEditando}
         plataformasPrecargadas={plataformas}
         clientesPrecargados={clientes}
       />
@@ -305,6 +348,8 @@ const FragmentRow = memo(function FragmentRow({
   colSpan,
   onToggle,
   onAsignar,
+  onEditarCuenta,
+  onEditarPuesto,
   onQuitar,
   onEliminarCuenta,
 }) {
@@ -339,6 +384,10 @@ const FragmentRow = memo(function FragmentRow({
         </td>
         <td className="px-4 py-3">
           <div className="flex items-center justify-end gap-2">
+            <Button size="sm" variant="secondary" onClick={() => onEditarCuenta(cuenta)}>
+              <Pencil className="h-3.5 w-3.5" />
+              Editar
+            </Button>
             <Button size="sm" onClick={() => onAsignar(cuenta)} disabled={llena}>
               <UserPlus className="h-3.5 w-3.5" />
               {llena ? 'Llena' : 'Asignar'}
@@ -397,14 +446,24 @@ const FragmentRow = memo(function FragmentRow({
                             {puesto.valor_venta != null ? `$${puesto.valor_venta}` : '—'}
                           </td>
                           <td className="px-3 py-2 text-right">
-                            <button
-                              type="button"
-                              onClick={() => onQuitar(cuenta, puesto)}
-                              className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg"
-                              title="Quitar de la cuenta"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
+                            <div className="inline-flex items-center justify-end gap-1">
+                              <button
+                                type="button"
+                                onClick={() => onEditarPuesto(cuenta, puesto)}
+                                className="p-1.5 text-gray-400 hover:text-indigo-400 hover:bg-indigo-400/10 rounded-lg"
+                                title="Editar PIN, precio y vencimiento"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => onQuitar(cuenta, puesto)}
+                                className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg"
+                                title="Quitar de la cuenta"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       )
