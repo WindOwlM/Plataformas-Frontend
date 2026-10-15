@@ -7,6 +7,7 @@ import CuentaModal from '../components/dashboard/CuentaModal'
 import AutocompleteField, { labelCliente, optionId } from '../components/ui/AutocompleteField'
 import Button from '../components/ui/Button'
 import QuitarClienteModal from '../components/dashboard/QuitarClienteModal'
+import ConfirmModal from '../components/ui/ConfirmModal'
 import {
   cuentaLlena,
   etiquetaEstado,
@@ -34,6 +35,7 @@ export default function CuentasPage() {
   const [expandedIds, setExpandedIds] = useState(() => new Set())
   const [isCuentaModalOpen, setIsCuentaModalOpen] = useState(false)
   const [quitar, setQuitar] = useState(null)
+  const [cuentaAEliminar, setCuentaAEliminar] = useState(null)
 
   const cargarCuentas = useCallback(async () => {
     if (!plataformaId && !clienteId) {
@@ -113,6 +115,13 @@ export default function CuentasPage() {
   const handleQuitar = useCallback((cuenta, puesto) => {
     setQuitar({ cuenta, puesto })
   }, [])
+
+  const eliminarCuenta = useCallback(async () => {
+    if (!cuentaAEliminar?.id) return
+    const { error } = await request(`/cuentas/${cuentaAEliminar.id}`, { method: 'DELETE' })
+    setCuentaAEliminar(null)
+    if (!error) await cargarCuentas()
+  }, [cuentaAEliminar, request, cargarCuentas])
 
   const plataformaNombre = useMemo(() => {
     if (plataformaId === 'todas' || (!plataformaId && clienteId)) return 'Todas las plataformas'
@@ -240,6 +249,7 @@ export default function CuentasPage() {
                     onToggle={toggleExpand}
                     onAsignar={setPuestoCuenta}
                     onQuitar={handleQuitar}
+                    onEliminarCuenta={setCuentaAEliminar}
                   />
                 ))}
               </tbody>
@@ -272,6 +282,16 @@ export default function CuentasPage() {
         nombre={quitar?.puesto?.usuario?.nombre}
         correo={quitar?.cuenta?.correo}
       />
+
+      <ConfirmModal
+        isOpen={!!cuentaAEliminar}
+        onClose={() => setCuentaAEliminar(null)}
+        onConfirm={eliminarCuenta}
+        title="Eliminar cuenta"
+        message={`¿Eliminar ${cuentaAEliminar?.correo}? Se quitarán también los clientes asignados a esta cuenta.`}
+        confirmText="Eliminar"
+        variant="danger"
+      />
     </div>
   )
 }
@@ -286,6 +306,7 @@ const FragmentRow = memo(function FragmentRow({
   onToggle,
   onAsignar,
   onQuitar,
+  onEliminarCuenta,
 }) {
   const llena = cuentaLlena(cuenta)
   const estado = etiquetaEstado(cuenta.estado)
@@ -325,6 +346,14 @@ const FragmentRow = memo(function FragmentRow({
             <Button size="sm" variant="secondary" onClick={() => onToggle(cuenta.id)}>
               {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
               {expanded ? 'Ocultar' : 'Desplegar'}
+            </Button>
+            <Button
+              size="sm"
+              variant="danger"
+              onClick={() => onEliminarCuenta(cuenta)}
+              title="Eliminar cuenta"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
             </Button>
           </div>
         </td>

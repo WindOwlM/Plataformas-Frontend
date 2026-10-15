@@ -7,9 +7,26 @@ const COLORS = {
   yellow: 'bg-yellow-600',
 }
 
-function StatCard({ title, value, icon, color = 'indigo' }) {
+const SELECTED_RING = {
+  indigo: 'border-indigo-500 ring-2 ring-indigo-500/40',
+  green: 'border-green-500 ring-2 ring-green-500/40',
+  red: 'border-red-500 ring-2 ring-red-500/40',
+  yellow: 'border-yellow-500 ring-2 ring-yellow-500/40',
+}
+
+function StatCard({ title, value, icon, color = 'indigo', onClick, selected = false }) {
+  const Wrapper = onClick ? 'button' : 'div'
+
   return (
-    <div className="bg-gray-800 rounded-xl p-4 sm:p-5 border border-gray-700">
+    <Wrapper
+      type={onClick ? 'button' : undefined}
+      onClick={onClick}
+      className={`
+        bg-gray-800 rounded-xl p-4 sm:p-5 border text-left w-full
+        ${selected ? SELECTED_RING[color] || SELECTED_RING.indigo : 'border-gray-700'}
+        ${onClick ? 'cursor-pointer hover:border-gray-500 transition-colors' : ''}
+      `}
+    >
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="text-sm text-gray-400 mb-1 truncate">{title}</p>
@@ -19,7 +36,7 @@ function StatCard({ title, value, icon, color = 'indigo' }) {
           {icon}
         </div>
       </div>
-    </div>
+    </Wrapper>
   )
 }
 

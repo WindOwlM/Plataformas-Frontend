@@ -52,6 +52,7 @@ const ItemRow = memo(function ItemRow({ item }) {
 export default function VencimientosPanel() {
   const { request, loading } = useApi()
   const [cuentas, setCuentas] = useState([])
+  const [filtro, setFiltro] = useState(null)
 
   useEffect(() => {
     request('/cuentas').then(({ data }) => {
@@ -67,12 +68,19 @@ export default function VencimientosPanel() {
   }), [items])
   const { hoy, manana, vencida: vencidas } = grupos
 
+  function seleccionar(bucket) {
+    setFiltro((prev) => (prev === bucket ? null : bucket))
+  }
+
+  const bucketsVisibles = filtro ? [filtro] : ['hoy', 'manana', 'vencida']
+  const listaFiltrada = filtro ? grupos[filtro] : items
+
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-xl font-bold text-white">Dashboard</h2>
         <p className="text-sm text-gray-400 mt-1">
-          Vencimientos de mañana, de hoy y los ya vencidos (se quedan visibles)
+          Toca una tarjeta para ver solo esos vencimientos. Vuelve a tocarla para ver todos.
         </p>
       </div>
 
@@ -81,18 +89,24 @@ export default function VencimientosPanel() {
           title="Vence mañana"
           value={String(manana.length)}
           color="yellow"
+          selected={filtro === 'manana'}
+          onClick={() => seleccionar('manana')}
           icon={<CalendarClock className="h-6 w-6 text-white" />}
         />
         <StatCard
           title="Vence hoy"
           value={String(hoy.length)}
           color="indigo"
+          selected={filtro === 'hoy'}
+          onClick={() => seleccionar('hoy')}
           icon={<Clock className="h-6 w-6 text-white" />}
         />
         <StatCard
           title="Ya vencidas"
           value={String(vencidas.length)}
           color="red"
+          selected={filtro === 'vencida'}
+          onClick={() => seleccionar('vencida')}
           icon={<CircleAlert className="h-6 w-6 text-white" />}
         />
       </div>
@@ -105,8 +119,12 @@ export default function VencimientosPanel() {
         <div className="bg-gray-800 rounded-xl border border-gray-700 p-12 text-center">
           <p className="text-gray-400">No hay vencimientos de mañana, de hoy ni vencidos</p>
         </div>
+      ) : listaFiltrada.length === 0 ? (
+        <div className="bg-gray-800 rounded-xl border border-gray-700 p-12 text-center">
+          <p className="text-gray-400">No hay registros en {bucketMeta[filtro]?.title?.toLowerCase()}</p>
+        </div>
       ) : (
-        ['hoy', 'manana', 'vencida'].map((bucket) => {
+        bucketsVisibles.map((bucket) => {
           const group = grupos[bucket]
           if (group.length === 0) return null
           return (
