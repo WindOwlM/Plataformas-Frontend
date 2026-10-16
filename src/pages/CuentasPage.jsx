@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown, ChevronRight, Loader2, MonitorPlay, Pencil, Plus, Trash2, UserPlus } from 'lucide-react'
 import { useApi } from '../hooks/useApi'
 import { fieldClass } from '../components/ui/fieldStyles'
@@ -453,7 +453,7 @@ const FragmentRow = memo(function FragmentRow({
   const estado = etiquetaEstado(cuenta.estado)
 
   return (
-    <>
+    <Fragment>
       <tr className="hover:bg-gray-700/40 transition-colors">
         <td className="px-4 py-3 text-white font-medium">{cuenta.correo}</td>
         <td className="px-4 py-3 text-gray-300">
@@ -573,6 +573,6 @@ const FragmentRow = memo(function FragmentRow({
           </td>
         </tr>
       )}
-    </>
+    </Fragment>
   )
 })

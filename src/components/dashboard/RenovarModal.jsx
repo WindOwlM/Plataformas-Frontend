@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import { useApi } from '../../hooks/useApi'
 import Button from '../ui/Button'
@@ -61,6 +61,7 @@ export default function RenovarModal({ isOpen, item, onClose, onSaved }) {
   const [cuentasPorPlat, setCuentasPorPlat] = useState({})
   const [guardando, setGuardando] = useState(false)
   const [errorLocal, setErrorLocal] = useState('')
+  const cuentasCargadas = useRef(new Set())
 
   const esCuenta = item?.tipo === 'cuenta'
   const puedeEditarPlataformas = item?.tipo === 'usuario' || item?.tipo === 'combo'
@@ -79,6 +80,7 @@ export default function RenovarModal({ isOpen, item, onClose, onSaved }) {
     setEditarPlataformas(false)
     setLineas(lineasIniciales(item, fecha))
     setCuentasPorPlat({})
+    cuentasCargadas.current = new Set()
     setErrorLocal('')
   }, [isOpen, item])
 
@@ -102,14 +104,10 @@ export default function RenovarModal({ isOpen, item, onClose, onSaved }) {
 
   const cargarCuentasPlat = useCallback(
     async (idPlataforma) => {
-      if (!idPlataforma) return
-      setCuentasPorPlat((prev) => {
-        if (prev[idPlataforma]) return prev
-        request(`/cuentas?plataforma=${idPlataforma}`, { silent: true }).then(({ data }) => {
-          setCuentasPorPlat((actual) => ({ ...actual, [idPlataforma]: data || [] }))
-        })
-        return { ...prev, [idPlataforma]: [] }
-      })
+      if (!idPlataforma || cuentasCargadas.current.has(idPlataforma)) return
+      cuentasCargadas.current.add(idPlataforma)
+      const { data } = await request(`/cuentas?plataforma=${idPlataforma}`, { silent: true })
+      setCuentasPorPlat((actual) => ({ ...actual, [idPlataforma]: data || [] }))
     },
     [request]
   )

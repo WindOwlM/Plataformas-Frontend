@@ -53,6 +53,8 @@ function AutocompleteField({
   const [highlightedIndex, setHighlightedIndex] = useState(0)
   const inputRef = useRef(null)
   const containerRef = useRef(null)
+  const onQueryChangeRef = useRef(onQueryChange)
+  onQueryChangeRef.current = onQueryChange
 
   const selectedOption = useMemo(
     () => options.find((opt) => getOptionValue(opt) === value),
@@ -65,9 +67,9 @@ function AutocompleteField({
     return options.filter((opt) => getOptionLabel(opt).toLowerCase().includes(q))
   }, [options, query, getOptionLabel, filterLocal])
 
-  useEffect(() => {
-    onQueryChange?.(query)
-  }, [query, onQueryChange])
+  const emitQuery = useCallback((texto) => {
+    onQueryChangeRef.current?.(texto)
+  }, [])
 
   useEffect(() => {
     function handleClickOutside(e) {
@@ -82,21 +84,31 @@ function AutocompleteField({
   const handleSelect = useCallback((option) => {
     onChange(getOptionValue(option))
     setQuery('')
+    emitQuery('')
     setIsOpen(false)
     inputRef.current?.blur()
-  }, [onChange, getOptionValue])
+  }, [onChange, getOptionValue, emitQuery])
 
   function handleInputChange(e) {
-    setQuery(e.target.value)
+    const next = e.target.value
+    setQuery(next)
     setIsOpen(true)
     setHighlightedIndex(0)
     if (value) onChange('')
+    emitQuery(next)
+  }
+
+  function handleClear() {
+    onChange('')
+    setQuery('')
+    emitQuery('')
+    inputRef.current?.focus()
   }
 
   function handleKeyDown(e) {
     if (e.key === 'ArrowDown') {
       e.preventDefault()
-      setHighlightedIndex((i) => Math.min(i + 1, filteredOptions.length - 1))
+      setHighlightedIndex((i) => Math.min(i + 1, Math.max(filteredOptions.length - 1, 0)))
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
       setHighlightedIndex((i) => Math.max(i - 1, 0))
@@ -109,6 +121,8 @@ function AutocompleteField({
       setIsOpen(false)
     }
   }
+
+  const mostrarLista = isOpen && (filteredOptions.length > 0 || query.length > 0)
 
   return (
     <div className="relative" ref={containerRef}>
@@ -128,6 +142,7 @@ function AutocompleteField({
           ref={inputRef}
           type="text"
           id={id}
+          autoComplete="off"
           value={selectedOption ? getOptionLabel(selectedOption) : query}
           onChange={handleInputChange}
           onFocus={() => setIsOpen(true)}
@@ -140,11 +155,7 @@ function AutocompleteField({
         {selectedOption && (
           <button
             type="button"
-            onClick={() => {
-              onChange('')
-              setQuery('')
-              inputRef.current?.focus()
-            }}
+            onClick={handleClear}
             className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-white"
           >
             <X className="h-4 w-4" />
@@ -152,29 +163,27 @@ function AutocompleteField({
         )}
       </div>
 
-      {isOpen && filteredOptions.length > 0 && (
+      {mostrarLista && (
         <div className="absolute z-50 mt-1 w-full bg-gray-700 border border-gray-600 rounded-lg shadow-xl max-h-60 overflow-auto">
-          {filteredOptions.map((option, index) => (
-            <button
-              key={getOptionValue(option)}
-              type="button"
-              onClick={() => handleSelect(option)}
-              onMouseEnter={() => setHighlightedIndex(index)}
-              className={`
-                w-full text-left px-3 py-2 text-sm
-                ${index === highlightedIndex ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-600'}
-                transition-colors
-              `}
-            >
-              {getOptionLabel(option)}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {isOpen && query.length > 0 && filteredOptions.length === 0 && (
-        <div className="absolute z-50 mt-1 w-full bg-gray-700 border border-gray-600 rounded-lg shadow-xl p-3 text-sm text-gray-400">
-          No se encontraron resultados
+          {filteredOptions.length === 0 ? (
+            <div className="p-3 text-sm text-gray-400">No se encontraron resultados</div>
+          ) : (
+            filteredOptions.map((option, index) => (
+              <button
+                key={`${String(getOptionValue(option))}-${option.id ?? index}-${index}`}
+                type="button"
+                onClick={() => handleSelect(option)}
+                onMouseEnter={() => setHighlightedIndex(index)}
+                className={`
+                  w-full text-left px-3 py-2 text-sm
+                  ${index === highlightedIndex ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-600'}
+                  transition-colors
+                `}
+              >
+                {getOptionLabel(option)}
+              </button>
+            ))
+          )}
         </div>
       )}
     </div>
