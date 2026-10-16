@@ -50,7 +50,7 @@ export default function CuentaModal({
         setPrecioCosto(cuenta.precio_costo || '')
         setFechaVencimiento(cuenta.fecha_vencimiento || '')
         setNotas(cuenta.notas || '')
-        setContrasena('')
+        setContrasena(cuenta.contrasena || '')
         const puestosExistentes = cuenta.usuario_cuenta || cuenta.usuarios_cuenta || []
         if (puestosExistentes.length > 0) {
           setPuestos(puestosExistentes.map((p) => ({
@@ -216,9 +216,9 @@ export default function CuentaModal({
             />
             <InputField
               id="contrasena"
-              label={esEdicion ? 'Nueva contraseña (opcional)' : 'Contraseña *'}
+              label={esEdicion ? 'Contraseña' : 'Contraseña *'}
               type="text"
-              placeholder={esEdicion ? 'Dejar vacío para no cambiar' : 'Contraseña del servicio'}
+              placeholder="Contraseña del servicio"
               value={contrasena}
               onChange={(e) => setContrasena(e.target.value)}
               required={!esEdicion}

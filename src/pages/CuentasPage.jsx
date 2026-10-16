@@ -1,5 +1,5 @@
 import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronDown, ChevronRight, Loader2, MonitorPlay, Pencil, Plus, Trash2, UserPlus } from 'lucide-react'
+import { ChevronDown, ChevronRight, Copy, Loader2, MonitorPlay, Pencil, Plus, Trash2, UserPlus } from 'lucide-react'
 import { useApi } from '../hooks/useApi'
 import { fieldClass } from '../components/ui/fieldStyles'
 import PuestoModal from '../components/dashboard/PuestoModal'
@@ -238,7 +238,7 @@ export default function CuentasPage() {
   const sinFiltro = !plataformaId && !clienteId && !correoFiltro && !correoQuery && !usuarioQuery
 
   const secciones = useMemo(() => seccionesPorPlataforma(cuentasVista), [cuentasVista])
-  const colSpan = 7
+  const colSpan = 8
 
   const filasPorSeccion = useMemo(
     () =>
@@ -355,6 +355,7 @@ export default function CuentasPage() {
                   <thead className="bg-gray-900/60 text-gray-400 text-xs uppercase tracking-wide">
                     <tr>
                       <th className="px-4 py-3 font-medium">Correo</th>
+                      <th className="px-4 py-3 font-medium">Contraseña</th>
                       <th className="px-4 py-3 font-medium">Proveedor</th>
                       <th className="px-4 py-3 font-medium">Estado</th>
                       <th className="px-4 py-3 font-medium">Vence</th>
@@ -455,7 +456,38 @@ const FragmentRow = memo(function FragmentRow({
   return (
     <Fragment>
       <tr className="hover:bg-gray-700/40 transition-colors">
-        <td className="px-4 py-3 text-white font-medium">{cuenta.correo}</td>
+        <td className="px-4 py-3">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="text-white font-medium">{cuenta.correo}</span>
+            {cuenta.correo ? (
+              <button
+                type="button"
+                className="p-1 text-gray-500 hover:text-white rounded"
+                title="Copiar correo"
+                onClick={() => navigator.clipboard.writeText(cuenta.correo)}
+              >
+                <Copy className="h-3.5 w-3.5" />
+              </button>
+            ) : null}
+          </span>
+        </td>
+        <td className="px-4 py-3">
+          {cuenta.contrasena ? (
+            <span className="inline-flex items-center gap-1.5">
+              <span className="font-mono text-gray-200">{cuenta.contrasena}</span>
+              <button
+                type="button"
+                className="p-1 text-gray-500 hover:text-white rounded"
+                title="Copiar contraseña"
+                onClick={() => navigator.clipboard.writeText(cuenta.contrasena)}
+              >
+                <Copy className="h-3.5 w-3.5" />
+              </button>
+            </span>
+          ) : (
+            <span className="text-gray-500">—</span>
+          )}
+        </td>
         <td className="px-4 py-3 text-gray-300">
           {cuenta.proveedor?.nombre_prov || '—'}
         </td>
