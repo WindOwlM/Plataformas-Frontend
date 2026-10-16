@@ -17,7 +17,8 @@ export default function Modal({
         onClick={onClose}
       />
       <div
-        className={`relative bg-gray-800 rounded-2xl border border-gray-700 shadow-xl w-full ${maxWidth} max-h-[90vh] flex flex-col`}
+        className={`relative z-10 bg-gray-800 rounded-2xl border border-gray-700 shadow-xl w-full ${maxWidth} max-h-[90vh] flex flex-col`}
+        onClick={(e) => e.stopPropagation()}
       >
         {(title || subtitle) && (
           <div className="px-6 pt-6 pb-3 shrink-0">

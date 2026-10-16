@@ -8,3 +8,26 @@ export function formatFecha(key) {
     year: 'numeric',
   })
 }
+
+function parseFechaLocal(key) {
+  const s = String(key || '').slice(0, 10)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null
+  return new Date(Number(s.slice(0, 4)), Number(s.slice(5, 7)) - 1, Number(s.slice(8, 10)))
+}
+
+export function fechaHoy() {
+  const dt = new Date()
+  const y = dt.getFullYear()
+  const m = String(dt.getMonth() + 1).padStart(2, '0')
+  const d = String(dt.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+export function sumarDias(key, days) {
+  const dt = parseFechaLocal(key) || parseFechaLocal(fechaHoy())
+  dt.setDate(dt.getDate() + Number(days) || 0)
+  const y = dt.getFullYear()
+  const m = String(dt.getMonth() + 1).padStart(2, '0')
+  const d = String(dt.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}

@@ -1,8 +1,11 @@
-import { memo, useEffect, useMemo, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { Clock, CalendarClock, CircleAlert, Loader2 } from 'lucide-react'
 import { useApi } from '../../hooks/useApi'
 import StatCard from './StatCard'
-import { formatFecha } from '../../lib/vencimientos'
+import Button from '../ui/Button'
+import Modal from '../ui/Modal'
+import { fieldClass } from '../ui/fieldStyles'
+import { fechaHoy, formatFecha, sumarDias } from '../../lib/vencimientos'
 import { clavePlataforma } from '../../lib/agruparCuentas'
 
 const bucketMeta = {
@@ -32,7 +35,7 @@ const tipoLabel = {
   cuenta: 'Cuenta',
 }
 
-const ItemRow = memo(function ItemRow({ item }) {
+const ItemRow = memo(function ItemRow({ item, onRenovar }) {
   const meta = bucketMeta[item.bucket]
   const esCombo = item.tipo === 'combo'
   const plataformas = item.plataformas?.length
@@ -72,6 +75,10 @@ const ItemRow = memo(function ItemRow({ item }) {
         <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium border ${meta.badge}`}>
           {meta.title}
         </span>
+        <Button size="sm" variant="secondary" onClick={() => onRenovar(item)}>
+          <CalendarClock className="h-3.5 w-3.5" />
+          Fecha
+        </Button>
       </div>
     </div>
   )
@@ -81,8 +88,11 @@ export default function VencimientosPanel() {
   const { request, loading } = useApi()
   const [payload, setPayload] = useState({ items: [], counts: { hoy: 0, manana: 0, vencida: 0 } })
   const [filtro, setFiltro] = useState(null)
+  const [renovar, setRenovar] = useState(null)
+  const [nuevaFecha, setNuevaFecha] = useState('')
+  const [guardandoFecha, setGuardandoFecha] = useState(false)
 
-  useEffect(() => {
+  const cargarVencimientos = useCallback(() => {
     request('/cuentas/vencimientos').then(({ data }) => {
       if (data) {
         setPayload({
@@ -92,6 +102,34 @@ export default function VencimientosPanel() {
       }
     })
   }, [request])
+
+  useEffect(() => {
+    cargarVencimientos()
+  }, [cargarVencimientos])
+
+  function abrirRenovar(item) {
+    setRenovar(item)
+    setNuevaFecha(sumarDias(item.fecha, 30))
+  }
+
+  async function guardarFecha() {
+    if (!renovar || !nuevaFecha) return
+    setGuardandoFecha(true)
+    const { error } = await request('/cuentas/vencimientos/fecha', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        fecha: nuevaFecha,
+        tipo: renovar.tipo,
+        id_cuenta: renovar.id_cuenta || null,
+        id_puesto: renovar.id_puesto || null,
+        renovaciones: renovar.renovaciones || [],
+      }),
+    })
+    setGuardandoFecha(false)
+    if (error) return
+    setRenovar(null)
+    cargarVencimientos()
+  }
 
   const items = payload.items
   const grupos = useMemo(() => {
@@ -203,7 +241,7 @@ export default function VencimientosPanel() {
                   </div>
                   <div className="divide-y divide-yellow-500/10">
                     {grupo.combos.map((item) => (
-                      <ItemRow key={item.id} item={item} />
+                      <ItemRow key={item.id} item={item} onRenovar={abrirRenovar} />
                     ))}
                   </div>
                 </div>
@@ -216,7 +254,7 @@ export default function VencimientosPanel() {
                   </div>
                   <div className="divide-y divide-gray-700">
                     {seccion.filas.map((item) => (
-                      <ItemRow key={item.id} item={item} />
+                      <ItemRow key={item.id} item={item} onRenovar={abrirRenovar} />
                     ))}
                   </div>
                 </div>
@@ -225,6 +263,59 @@ export default function VencimientosPanel() {
           )
         })
       )}
+
+      <Modal
+        isOpen={!!renovar}
+        onClose={() => setRenovar(null)}
+        title="Actualizar fecha"
+        subtitle={
+          renovar?.tipo === 'combo'
+            ? `${renovar.nombre} · ${(renovar.plataformas || []).join(' · ')}`
+            : renovar?.nombre
+        }
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-400">
+            Fecha actual: {formatFecha(renovar?.fecha)}
+            {renovar?.tipo === 'combo' ? '. Se aplica a todas las plataformas de este combo que vencen en este grupo.' : ''}
+          </p>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Nueva fecha</label>
+            <input
+              type="date"
+              value={nuevaFecha}
+              onChange={(e) => setNuevaFecha(e.target.value)}
+              className={fieldClass}
+            />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={() => setNuevaFecha(sumarDias(nuevaFecha || renovar?.fecha, 30))}
+            >
+              +30 días
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={() => setNuevaFecha(sumarDias(fechaHoy(), 30))}
+            >
+              Hoy +30
+            </Button>
+          </div>
+          <div className="flex gap-3 pt-1">
+            <Button type="button" variant="secondary" onClick={() => setRenovar(null)} className="flex-1">
+              Cancelar
+            </Button>
+            <Button type="button" onClick={guardarFecha} isLoading={guardandoFecha} className="flex-1">
+              Guardar
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }
