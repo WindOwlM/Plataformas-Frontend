@@ -19,6 +19,7 @@ import {
   puestosDe,
 } from '../lib/cuentaEstado'
 import { esComboPuesto, seccionesPorPlataforma } from '../lib/agruparCuentas'
+import FechaBadge from '../components/ui/FechaBadge'
 
 function estadoBadge(estado) {
   const colors = {
@@ -36,6 +37,10 @@ export default function CuentasPage() {
   const [clientes, setClientes] = useState([])
   const [clienteId, setClienteId] = useState('')
   const [correoFiltro, setCorreoFiltro] = useState('')
+  const [correoQuery, setCorreoQuery] = useState('')
+  const [usuarioQuery, setUsuarioQuery] = useState('')
+  const [correoApi, setCorreoApi] = useState('')
+  const [usuarioApi, setUsuarioApi] = useState('')
   const [sugerenciasCuenta, setSugerenciasCuenta] = useState([])
   const [cuentas, setCuentas] = useState([])
   const [puestoCuenta, setPuestoCuenta] = useState(null)
@@ -47,7 +52,9 @@ export default function CuentasPage() {
   const [cuentaAEliminar, setCuentaAEliminar] = useState(null)
 
   const cargarCuentas = useCallback(async () => {
-    if (!plataformaId && !clienteId && !correoFiltro) {
+    const correo = correoFiltro || correoApi
+    const usuario = clienteId ? '' : usuarioApi
+    if (!plataformaId && !clienteId && !correo && !usuario) {
       setCuentas([])
       return
     }
@@ -55,12 +62,13 @@ export default function CuentasPage() {
     const params = new URLSearchParams()
     if (plataformaId && plataformaId !== 'todas') params.append('plataforma', plataformaId)
     if (clienteId) params.append('id_usuario', clienteId)
-    if (correoFiltro) params.append('correo', correoFiltro)
+    else if (usuario) params.append('usuario', usuario)
+    if (correo) params.append('correo', correo)
 
     const query = params.toString() ? `?${params.toString()}` : ''
     const { data } = await request(`/cuentas${query}`)
     setCuentas(data || [])
-  }, [plataformaId, clienteId, correoFiltro, request])
+  }, [plataformaId, clienteId, correoFiltro, correoApi, usuarioApi, request])
 
   useEffect(() => {
     request('/catalogos/plataformas', { silent: true }).then(({ data }) => {
@@ -76,24 +84,35 @@ export default function CuentasPage() {
   }, [cargarCuentas])
 
   const buscaCuentaTimer = useRef(null)
+  const buscaClienteTimer = useRef(null)
 
   const onQueryCuenta = useCallback((texto) => {
     window.clearTimeout(buscaCuentaTimer.current)
     const q = texto.trim()
-    if (q.length < 2) {
-      setSugerenciasCuenta([])
-      return
-    }
-
+    setCorreoQuery(q)
     buscaCuentaTimer.current = window.setTimeout(() => {
+      setCorreoApi(q)
+      if (q.length < 2) {
+        setSugerenciasCuenta([])
+        return
+      }
       const params = new URLSearchParams({ correo: q, limit: '8' })
       if (plataformaId && plataformaId !== 'todas') params.append('plataforma', plataformaId)
       if (clienteId) params.append('id_usuario', clienteId)
       request(`/cuentas?${params.toString()}`, { silent: true }).then(({ data }) => {
         setSugerenciasCuenta(data || [])
       })
-    }, 280)
+    }, 200)
   }, [plataformaId, clienteId, request])
+
+  const onQueryCliente = useCallback((texto) => {
+    window.clearTimeout(buscaClienteTimer.current)
+    const q = texto.trim()
+    setUsuarioQuery(q)
+    buscaClienteTimer.current = window.setTimeout(() => {
+      setUsuarioApi(q)
+    }, 200)
+  }, [])
 
   const guardarPuesto = useCallback(async (puestoData) => {
     const cuentaId = puestoCuenta?.id || puestoData.id_cuenta
@@ -178,11 +197,11 @@ export default function CuentasPage() {
   }, [cuentaAEliminar, request, cargarCuentas])
 
   const plataformaNombre = useMemo(() => {
-    if (plataformaId === 'todas' || (!plataformaId && (clienteId || correoFiltro))) {
+    if (plataformaId === 'todas' || (!plataformaId && (clienteId || correoFiltro || correoApi || usuarioApi))) {
       return 'Todas las plataformas'
     }
     return plataformas.find((p) => p.id === plataformaId)?.nombre_plat || ''
-  }, [plataformaId, plataformas, clienteId, correoFiltro])
+  }, [plataformaId, plataformas, clienteId, correoFiltro, correoApi, usuarioApi])
 
   const clienteNombre = useMemo(
     () => clientes.find((c) => c.id === clienteId)?.nombre,
@@ -196,14 +215,29 @@ export default function CuentasPage() {
     return sugerenciasCuenta
   }, [correoFiltro, sugerenciasCuenta])
 
+  const cuentasVista = useMemo(() => {
+    let list = cuentas
+    const cq = (correoFiltro || correoQuery).trim().toLowerCase()
+    if (cq && !correoFiltro) {
+      list = list.filter((c) => String(c.correo || '').toLowerCase().includes(cq))
+    }
+    const uq = usuarioQuery.trim().toLowerCase()
+    if (uq && !clienteId) {
+      list = list.filter((c) =>
+        puestosDe(c).some((p) => String(p.usuario?.nombre || '').toLowerCase().includes(uq))
+      )
+    }
+    return list
+  }, [cuentas, correoFiltro, correoQuery, usuarioQuery, clienteId])
+
   const tituloLista = clienteNombre
     ? `Cuentas de ${clienteNombre}`
-    : correoFiltro
-      ? correoFiltro
+    : correoFiltro || correoQuery
+      ? correoFiltro || correoQuery
       : plataformaNombre
-  const sinFiltro = !plataformaId && !clienteId && !correoFiltro
+  const sinFiltro = !plataformaId && !clienteId && !correoFiltro && !correoQuery && !usuarioQuery
 
-  const secciones = useMemo(() => seccionesPorPlataforma(cuentas), [cuentas])
+  const secciones = useMemo(() => seccionesPorPlataforma(cuentasVista), [cuentasVista])
   const colSpan = 7
 
   const filasPorSeccion = useMemo(
@@ -213,10 +247,10 @@ export default function CuentasPage() {
         filas: seccion.cuentas.map((cuenta) => ({
           cuenta,
           puestos: puestosDe(cuenta),
-          expanded: clienteId ? true : expandedIds.has(cuenta.id),
+          expanded: clienteId || usuarioQuery ? true : expandedIds.has(cuenta.id),
         })),
       })),
-    [secciones, clienteId, expandedIds]
+    [secciones, clienteId, usuarioQuery, expandedIds]
   )
 
   return (
@@ -276,6 +310,7 @@ export default function CuentasPage() {
             options={clientes}
             getOptionLabel={labelCliente}
             getOptionValue={optionId}
+            onQueryChange={onQueryCliente}
           />
         </div>
       </div>
@@ -289,21 +324,23 @@ export default function CuentasPage() {
         <div className="flex items-center justify-center py-16">
           <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
         </div>
-      ) : cuentas.length === 0 ? (
+      ) : cuentasVista.length === 0 ? (
         <div className="bg-gray-800 rounded-xl border border-gray-700 p-12 text-center">
           <p className="text-gray-400">
             {clienteNombre
               ? `${clienteNombre} no tiene cuentas asignadas`
-              : correoFiltro
-                ? `No hay cuentas para ${correoFiltro}`
-                : `No hay cuentas para ${plataformaNombre}`}
+              : correoFiltro || correoQuery
+                ? `No hay cuentas para ${correoFiltro || correoQuery}`
+                : usuarioQuery
+                  ? `No hay cuentas para ${usuarioQuery}`
+                  : `No hay cuentas para ${plataformaNombre}`}
           </p>
         </div>
       ) : (
         <div className="space-y-4">
           <div className="flex items-center justify-between px-1">
             <p className="text-sm text-gray-300 font-medium">{tituloLista}</p>
-            <p className="text-xs text-gray-500">{cuentas.length} cuenta{cuentas.length === 1 ? '' : 's'}</p>
+            <p className="text-xs text-gray-500">{cuentasVista.length} cuenta{cuentasVista.length === 1 ? '' : 's'}</p>
           </div>
           {filasPorSeccion.map((seccion) => (
             <div key={seccion.id} className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
@@ -427,8 +464,8 @@ const FragmentRow = memo(function FragmentRow({
             {estado}
           </span>
         </td>
-        <td className="px-4 py-3 text-gray-300 whitespace-nowrap">
-          {cuenta.fecha_vencimiento || 'Sin fecha'}
+        <td className="px-4 py-3 whitespace-nowrap">
+          <FechaBadge fecha={cuenta.fecha_vencimiento} empty="Sin fecha" />
         </td>
         <td className="px-4 py-3 text-gray-300">
           {cuenta.precio_costo != null ? `$${cuenta.precio_costo}` : '—'}
@@ -500,8 +537,8 @@ const FragmentRow = memo(function FragmentRow({
                           <td className="px-3 py-2 font-mono text-gray-300">
                             {puesto.pin || '—'}
                           </td>
-                          <td className="px-3 py-2 text-gray-300">
-                            {puesto.vencimiento_usuario || '—'}
+                          <td className="px-3 py-2">
+                            <FechaBadge fecha={puesto.vencimiento_usuario} />
                           </td>
                           <td className="px-3 py-2 text-gray-300">
                             {puesto.valor_venta != null ? `$${puesto.valor_venta}` : '—'}

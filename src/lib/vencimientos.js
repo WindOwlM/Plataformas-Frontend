@@ -31,3 +31,29 @@ export function sumarDias(key, days) {
   const d = String(dt.getDate()).padStart(2, '0')
   return `${y}-${m}-${d}`
 }
+
+export const bucketMeta = {
+  manana: {
+    title: 'Vence mañana',
+    badge: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30',
+  },
+  hoy: {
+    title: 'Vence hoy',
+    badge: 'bg-orange-500/20 text-orange-300 border-orange-500/30',
+  },
+  vencida: {
+    title: 'Ya vencida',
+    badge: 'bg-red-500/20 text-red-400 border-red-500/30',
+  },
+}
+
+export function classifyFecha(fecha) {
+  const key = String(fecha || '').slice(0, 10)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return null
+  const today = fechaHoy()
+  const manana = sumarDias(today, 1)
+  if (key === manana) return 'manana'
+  if (key === today) return 'hoy'
+  if (key < today) return 'vencida'
+  return null
+}
