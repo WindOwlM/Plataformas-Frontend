@@ -1,9 +1,9 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
-import { Clock, CalendarClock, CircleAlert, Loader2 } from 'lucide-react'
+import { Clock, CalendarClock, CircleAlert, Copy, Loader2 } from 'lucide-react'
 import { useApi } from '../../hooks/useApi'
 import StatCard from './StatCard'
 import Button from '../ui/Button'
-import { bucketMeta, formatFecha } from '../../lib/vencimientos'
+import { bucketMeta, formatFecha, mensajeRecordatorioHoy } from '../../lib/vencimientos'
 import { clavePlataforma } from '../../lib/agruparCuentas'
 import RenovarModal from './RenovarModal'
 
@@ -22,9 +22,21 @@ const tipoLabel = {
 const ItemRow = memo(function ItemRow({ item, onRenovar }) {
   const meta = bucketMeta[item.bucket]
   const esCombo = item.tipo === 'combo'
+  const esHoy = item.bucket === 'hoy'
+  const [copiado, setCopiado] = useState(false)
   const plataformas = item.plataformas?.length
     ? item.plataformas.join(' · ')
     : item.plataforma
+
+  async function copiarMensaje() {
+    try {
+      await navigator.clipboard.writeText(mensajeRecordatorioHoy(item))
+      setCopiado(true)
+      window.setTimeout(() => setCopiado(false), 1600)
+    } catch {
+      setCopiado(false)
+    }
+  }
 
   return (
     <div
@@ -63,6 +75,12 @@ const ItemRow = memo(function ItemRow({ item, onRenovar }) {
           <CalendarClock className="h-3.5 w-3.5" />
           Renovar
         </Button>
+        {esHoy ? (
+          <Button size="sm" variant="secondary" onClick={copiarMensaje}>
+            <Copy className="h-3.5 w-3.5" />
+            {copiado ? 'Copiado' : 'Copiar mensaje'}
+          </Button>
+        ) : null}
       </div>
     </div>
   )

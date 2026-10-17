@@ -47,6 +47,40 @@ export const bucketMeta = {
   },
 }
 
+export function mensajeRecordatorioHoy(item) {
+  const cuentas = []
+  const vistos = new Set()
+
+  function agregar(plataforma, correo) {
+    const plat = String(plataforma || '').trim()
+    const mail = String(correo || '').trim()
+    if (!plat || !mail) return
+    const clave = `${plat.toLowerCase()}|${mail.toLowerCase()}`
+    if (vistos.has(clave)) return
+    vistos.add(clave)
+    cuentas.push(`${plat}:\n${mail}`)
+  }
+
+  const filas = item?.tipo === 'combo'
+    ? (item.asignaciones?.length ? item.asignaciones : item.renovaciones || [])
+    : []
+
+  if (filas.length > 0) {
+    for (const fila of filas) agregar(fila.plataforma, fila.correo)
+  } else {
+    agregar(item?.plataforma, item?.correo || item?.nombre)
+  }
+
+  const bloqueCuentas = cuentas.join('\n')
+
+  return `Estimado cliente
+Te recordamos que hoy se cumplen los 30 días de tu suscripción, no olvides renovarla para seguir disfrutando de tus series y películas favoritas.
+
+${bloqueCuentas}
+
+Nuestros medios de pago habilitados son: Llave, Bancolombia, Nequi y Daviplata.`
+}
+
 export function classifyFecha(fecha) {
   const key = String(fecha || '').slice(0, 10)
   if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return null
