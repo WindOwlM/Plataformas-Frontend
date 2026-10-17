@@ -12,6 +12,7 @@ import Button from '../ui/Button'
 import Modal from '../ui/Modal'
 import { fieldClass } from '../ui/fieldStyles'
 import { maxPuestosDe } from '../../lib/cuentaEstado'
+import ClienteQuickCreate from './ClienteQuickCreate'
 
 export default function CuentaModal({
   isOpen,
@@ -20,6 +21,7 @@ export default function CuentaModal({
   cuenta,
   plataformasPrecargadas,
   clientesPrecargados,
+  onClienteCreado,
 }) {
   const [correo, setCorreo] = useState('')
   const [contrasena, setContrasena] = useState('')
@@ -289,16 +291,25 @@ export default function CuentaModal({
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-                  <AutocompleteField
-                    id={`cliente-${index}`}
-                    label="Cliente"
-                    placeholder="Buscar cliente..."
-                    value={puesto.id_usuario}
-                    onChange={(val) => actualizarPuesto(index, 'id_usuario', val)}
-                    options={clientes}
-                    getOptionLabel={labelNombre}
-                    getOptionValue={optionId}
-                  />
+                  <div>
+                    <AutocompleteField
+                      id={`cliente-${index}`}
+                      label="Cliente"
+                      placeholder="Buscar cliente..."
+                      value={puesto.id_usuario}
+                      onChange={(val) => actualizarPuesto(index, 'id_usuario', val)}
+                      options={clientes}
+                      getOptionLabel={labelNombre}
+                      getOptionValue={optionId}
+                    />
+                    <ClienteQuickCreate
+                      onCreated={(cliente) => {
+                        setClientes((prev) => [cliente, ...prev.filter((c) => c.id !== cliente.id)])
+                        actualizarPuesto(index, 'id_usuario', cliente.id)
+                        onClienteCreado?.(cliente)
+                      }}
+                    />
+                  </div>
                   <InputField
                     id={`pin-${index}`}
                     label="PIN / Clave"

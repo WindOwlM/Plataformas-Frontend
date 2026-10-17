@@ -5,8 +5,17 @@ import InputField from '../ui/InputField'
 import Button from '../ui/Button'
 import Modal from '../ui/Modal'
 import { fieldClass } from '../ui/fieldStyles'
+import ClienteQuickCreate from './ClienteQuickCreate'
 
-export default function PuestoModal({ isOpen, onClose, onSubmit, cuenta, puesto, clientesPrecargados }) {
+export default function PuestoModal({
+  isOpen,
+  onClose,
+  onSubmit,
+  cuenta,
+  puesto,
+  clientesPrecargados,
+  onClienteCreado,
+}) {
   const [idUsuario, setIdUsuario] = useState('')
   const [pin, setPin] = useState('')
   const [vencimiento, setVencimiento] = useState('')
@@ -78,17 +87,26 @@ export default function PuestoModal({ isOpen, onClose, onSubmit, cuenta, puesto,
       subtitle={cuenta?.correo ? `Cuenta: ${cuenta.correo}` : ''}
     >
       <form onSubmit={handleSubmit} className="space-y-4">
-        <AutocompleteField
-          id="cliente"
-          label="Cliente *"
-          placeholder="Buscar cliente ya creado..."
-          value={idUsuario}
-          onChange={setIdUsuario}
-          options={clientes}
-          getOptionLabel={labelCliente}
-          getOptionValue={optionId}
-          required
-        />
+        <div>
+          <AutocompleteField
+            id="cliente"
+            label="Cliente *"
+            placeholder="Buscar cliente o créalo abajo..."
+            value={idUsuario}
+            onChange={setIdUsuario}
+            options={clientes}
+            getOptionLabel={labelCliente}
+            getOptionValue={optionId}
+            required
+          />
+          <ClienteQuickCreate
+            onCreated={(cliente) => {
+              setClientes((prev) => [cliente, ...prev.filter((c) => c.id !== cliente.id)])
+              setIdUsuario(cliente.id)
+              onClienteCreado?.(cliente)
+            }}
+          />
+        </div>
 
         <div className="grid grid-cols-2 gap-3">
           <InputField

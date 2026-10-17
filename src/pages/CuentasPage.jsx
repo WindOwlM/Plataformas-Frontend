@@ -176,6 +176,11 @@ export default function CuentasPage() {
     setPuestoEditando(puesto)
   }, [])
 
+  const onClienteCreado = useCallback((cliente) => {
+    if (!cliente?.id) return
+    setClientes((prev) => [cliente, ...prev.filter((c) => c.id !== cliente.id)])
+  }, [])
+
   const toggleExpand = useCallback((id) => {
     setExpandedIds((prev) => {
       const next = new Set(prev)
@@ -400,6 +405,7 @@ export default function CuentasPage() {
         cuenta={puestoCuenta}
         puesto={puestoEditando}
         clientesPrecargados={clientes}
+        onClienteCreado={onClienteCreado}
       />
 
       <CuentaModal
@@ -412,6 +418,7 @@ export default function CuentasPage() {
         cuenta={cuentaEditando}
         plataformasPrecargadas={plataformas}
         clientesPrecargados={clientes}
+        onClienteCreado={onClienteCreado}
       />
 
       <QuitarClienteModal
