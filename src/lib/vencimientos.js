@@ -47,18 +47,24 @@ export const bucketMeta = {
   },
 }
 
+export function formatSaldo(valor) {
+  const n = Number(valor)
+  if (!Number.isFinite(n)) return '$0'
+  return `$${Math.round(n).toLocaleString('es-CO')}`
+}
+
 export function mensajeRecordatorioHoy(item) {
   const cuentas = []
   const vistos = new Set()
 
-  function agregar(plataforma, correo) {
+  function agregar(plataforma, correo, valor) {
     const plat = String(plataforma || '').trim()
     const mail = String(correo || '').trim()
     if (!plat || !mail) return
     const clave = `${plat.toLowerCase()}|${mail.toLowerCase()}`
     if (vistos.has(clave)) return
     vistos.add(clave)
-    cuentas.push(`${plat}:\n${mail}`)
+    cuentas.push({ plat, mail, valor: Number(valor) || 0 })
   }
 
   const filas = item?.tipo === 'combo'
@@ -66,19 +72,40 @@ export function mensajeRecordatorioHoy(item) {
     : []
 
   if (filas.length > 0) {
-    for (const fila of filas) agregar(fila.plataforma, fila.correo)
+    for (const fila of filas) agregar(fila.plataforma, fila.correo, fila.valor ?? fila.valor_venta)
   } else {
-    agregar(item?.plataforma, item?.correo || item?.nombre)
+    agregar(item?.plataforma, item?.correo || item?.nombre, item?.valor)
   }
 
-  const bloqueCuentas = cuentas.join('\n')
+  const bloqueCuentas = cuentas.map((c) => `${c.plat}:\n${c.mail}`).join('\n')
+  const saldo = cuentas.reduce((suma, c) => suma + c.valor, 0)
 
   return `Estimado cliente
 Te recordamos que hoy se cumplen los 30 días de tu suscripción, no olvides renovarla para seguir disfrutando de tus series y películas favoritas.
 
 ${bloqueCuentas}
 
+Saldo: ${formatSaldo(saldo)}
+
 Nuestros medios de pago habilitados son: Llave, Bancolombia, Nequi y Daviplata.`
+}
+
+export function puestoCortado(puesto) {
+  return String(puesto?.estado || '').toLowerCase() === 'cortado'
+}
+
+export function puestoPorCortar(puesto) {
+  return !puestoCortado(puesto) && classifyFecha(puesto?.vencimiento_usuario) === 'vencida'
+}
+
+export function resumenCorte(puestos = []) {
+  let porCortar = 0
+  let cortados = 0
+  for (const puesto of puestos) {
+    if (puestoCortado(puesto)) cortados += 1
+    else if (puestoPorCortar(puesto)) porCortar += 1
+  }
+  return { porCortar, cortados }
 }
 
 export function classifyFecha(fecha) {

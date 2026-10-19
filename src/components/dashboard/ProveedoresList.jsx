@@ -3,6 +3,7 @@ import { Plus, Pencil, Truck } from 'lucide-react'
 import { useApi } from '../../hooks/useApi'
 import CatalogModal from './CatalogModal'
 import Button from '../ui/Button'
+import { claseFila } from '../../lib/filaSeleccion'
 
 export default function ProveedoresList() {
   const [proveedores, setProveedores] = useState([])
@@ -76,7 +77,7 @@ export default function ProveedoresList() {
           proveedores.map((p) => (
             <div
               key={p.id}
-              className="px-4 py-3.5 flex items-center justify-between hover:bg-gray-700/50 transition-colors group"
+              className={claseFila(isModalOpen && proveedorEditando?.id === p.id, 'px-4 py-3.5 flex items-center justify-between hover:bg-gray-700/50 transition-colors group')}
             >
               <span className="text-white">{p.nombre_prov}</span>
               <button

@@ -1,5 +1,5 @@
 import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronDown, ChevronRight, Copy, Loader2, MonitorPlay, Pencil, Plus, Trash2, UserPlus } from 'lucide-react'
+import { ChevronDown, ChevronRight, Copy, Loader2, MonitorPlay, Pencil, Plus, Scissors, Trash2, UserPlus } from 'lucide-react'
 import { useApi } from '../hooks/useApi'
 import { fieldClass } from '../components/ui/fieldStyles'
 import PuestoModal from '../components/dashboard/PuestoModal'
@@ -20,6 +20,9 @@ import {
 } from '../lib/cuentaEstado'
 import { esComboPuesto, seccionesPorPlataforma } from '../lib/agruparCuentas'
 import FechaBadge from '../components/ui/FechaBadge'
+import CorteBadges, { CorteBadgePuesto } from '../components/ui/CorteBadges'
+import { claseFila } from '../lib/filaSeleccion'
+import { puestoCortado } from '../lib/vencimientos'
 
 function estadoBadge(estado) {
   const colors = {
@@ -194,6 +197,16 @@ export default function CuentasPage() {
     setQuitar({ cuenta, puesto })
   }, [])
 
+  const marcarCortado = useCallback(async (cuenta, puesto) => {
+    if (!cuenta?.id || !puesto?.id) return
+    const estado = puestoCortado(puesto) ? 'activa' : 'cortado'
+    const { error } = await request(`/cuentas/${cuenta.id}/puestos/${puesto.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ estado }),
+    })
+    if (!error) await cargarCuentas()
+  }, [request, cargarCuentas])
+
   const eliminarCuenta = useCallback(async () => {
     if (!cuentaAEliminar?.id) return
     const { error } = await request(`/cuentas/${cuentaAEliminar.id}`, { method: 'DELETE' })
@@ -252,10 +265,15 @@ export default function CuentasPage() {
         filas: seccion.cuentas.map((cuenta) => ({
           cuenta,
           puestos: puestosDe(cuenta),
-          expanded: clienteId || usuarioQuery ? true : expandedIds.has(cuenta.id),
+          expanded: !!(
+            clienteId
+            || usuarioQuery
+            || expandedIds.has(cuenta.id)
+            || puestoEditando?.id_cuenta === cuenta.id
+          ),
         })),
       })),
-    [secciones, clienteId, usuarioQuery, expandedIds]
+    [secciones, clienteId, usuarioQuery, expandedIds, puestoEditando]
   )
 
   return (
@@ -355,18 +373,18 @@ export default function CuentasPage() {
                   {seccion.filas.length} cuenta{seccion.filas.length === 1 ? '' : 's'}
                 </span>
               </div>
-              <div className="overflow-x-auto custom-scrollbar">
-                <table className="w-full text-sm text-left min-w-[720px]">
+              <div>
+                <table className="w-full text-sm text-left">
                   <thead className="bg-gray-900/60 text-gray-400 text-xs uppercase tracking-wide">
                     <tr>
-                      <th className="px-4 py-3 font-medium">Correo</th>
-                      <th className="px-4 py-3 font-medium">Contraseña</th>
-                      <th className="px-4 py-3 font-medium">Proveedor</th>
-                      <th className="px-4 py-3 font-medium">Estado</th>
-                      <th className="px-4 py-3 font-medium">Vence</th>
-                      <th className="px-4 py-3 font-medium">Costo</th>
-                      <th className="px-4 py-3 font-medium">Puestos</th>
-                      <th className="px-4 py-3 font-medium"> </th>
+                      <th className="px-3 py-2.5 font-medium">Correo</th>
+                      <th className="px-3 py-2.5 font-medium">Contraseña</th>
+                      <th className="px-3 py-2.5 font-medium">Proveedor</th>
+                      <th className="px-3 py-2.5 font-medium">Estado</th>
+                      <th className="px-3 py-2.5 font-medium">Vence</th>
+                      <th className="px-3 py-2.5 font-medium">Costo</th>
+                      <th className="px-3 py-2.5 font-medium">Puestos</th>
+                      <th className="px-3 py-2.5 font-medium"> </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-700">
@@ -385,6 +403,13 @@ export default function CuentasPage() {
                         onEditarPuesto={abrirEditarPuesto}
                         onQuitar={handleQuitar}
                         onEliminarCuenta={setCuentaAEliminar}
+                        onCortar={marcarCortado}
+                        seleccionada={
+                          cuentaEditando?.id === cuenta.id
+                          || puestoCuenta?.id === cuenta.id
+                          || cuentaAEliminar?.id === cuenta.id
+                        }
+                        puestoSeleccionadoId={puestoEditando?.id || quitar?.puesto?.id}
                       />
                     ))}
                   </tbody>
@@ -456,16 +481,19 @@ const FragmentRow = memo(function FragmentRow({
   onEditarPuesto,
   onQuitar,
   onEliminarCuenta,
+  onCortar,
+  seleccionada,
+  puestoSeleccionadoId,
 }) {
   const llena = cuentaLlena(cuenta)
   const estado = etiquetaEstado(cuenta.estado)
 
   return (
     <Fragment>
-      <tr className="hover:bg-gray-700/40 transition-colors">
-        <td className="px-4 py-3">
+      <tr className={claseFila(seleccionada, 'hover:bg-gray-700/40 transition-colors')}>
+        <td className="px-3 py-2">
           <span className="inline-flex items-center gap-1.5">
-            <span className="text-white font-medium">{cuenta.correo}</span>
+            <span className="text-white font-medium whitespace-nowrap">{cuenta.correo}</span>
             {cuenta.correo ? (
               <button
                 type="button"
@@ -476,12 +504,13 @@ const FragmentRow = memo(function FragmentRow({
                 <Copy className="h-3.5 w-3.5" />
               </button>
             ) : null}
+            <CorteBadges puestos={puestos} />
           </span>
         </td>
-        <td className="px-4 py-3">
+        <td className="px-3 py-2">
           {cuenta.contrasena ? (
             <span className="inline-flex items-center gap-1.5">
-              <span className="font-mono text-gray-200">{cuenta.contrasena}</span>
+              <span className="font-mono text-gray-200 whitespace-nowrap">{cuenta.contrasena}</span>
               <button
                 type="button"
                 className="p-1 text-gray-500 hover:text-white rounded"
@@ -495,36 +524,35 @@ const FragmentRow = memo(function FragmentRow({
             <span className="text-gray-500">—</span>
           )}
         </td>
-        <td className="px-4 py-3 text-gray-300">
+        <td className="px-3 py-2 text-gray-300 whitespace-nowrap">
           {cuenta.proveedor?.nombre_prov || '—'}
         </td>
-        <td className="px-4 py-3">
+        <td className="px-3 py-2">
           <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium border ${estadoBadge(estado)}`}>
             {estado}
           </span>
         </td>
-        <td className="px-4 py-3 whitespace-nowrap">
+        <td className="px-3 py-2 whitespace-nowrap">
           <FechaBadge fecha={cuenta.fecha_vencimiento} empty="Sin fecha" />
         </td>
-        <td className="px-4 py-3 text-gray-300">
+        <td className="px-3 py-2 text-gray-300 whitespace-nowrap">
           {cuenta.precio_costo != null ? `$${cuenta.precio_costo}` : '—'}
         </td>
-        <td className="px-4 py-3 text-gray-300">
+        <td className="px-3 py-2 text-gray-300 whitespace-nowrap">
           {cuenta.ocupados ?? puestos.length}/{cuenta.max_puestos ?? 5}
         </td>
-        <td className="px-4 py-3">
-          <div className="flex items-center justify-end gap-2">
-            <Button size="sm" variant="secondary" onClick={() => onEditarCuenta(cuenta)}>
+        <td className="px-3 py-2 whitespace-nowrap">
+          <div className="flex items-center justify-end gap-1">
+            <Button size="sm" variant="secondary" onClick={() => onEditarCuenta(cuenta)} title="Editar">
               <Pencil className="h-3.5 w-3.5" />
               Editar
             </Button>
-            <Button size="sm" onClick={() => onAsignar(cuenta)} disabled={llena}>
+            <Button size="sm" onClick={() => onAsignar(cuenta)} disabled={llena} title={llena ? 'Llena' : 'Asignar'}>
               <UserPlus className="h-3.5 w-3.5" />
               {llena ? 'Llena' : 'Asignar'}
             </Button>
-            <Button size="sm" variant="secondary" onClick={() => onToggle(cuenta.id)}>
+            <Button size="sm" variant="secondary" onClick={() => onToggle(cuenta.id)} title={expanded ? 'Ocultar' : 'Desplegar'}>
               {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-              {expanded ? 'Ocultar' : 'Desplegar'}
             </Button>
             <Button
               size="sm"
@@ -558,8 +586,12 @@ const FragmentRow = memo(function FragmentRow({
                   <tbody className="divide-y divide-gray-700">
                     {puestos.map((puesto, index) => {
                       const esFiltro = clienteId && puesto.id_usuario === clienteId
+                      const esPuestoSel = puestoSeleccionadoId && puesto.id === puestoSeleccionadoId
                       return (
-                        <tr key={puesto.id || index} className={esFiltro ? 'bg-indigo-500/10' : ''}>
+                        <tr
+                          key={puesto.id || index}
+                          className={claseFila(esPuestoSel, esFiltro ? 'bg-indigo-500/10' : '')}
+                        >
                           <td className="px-3 py-2 text-white">
                             <span className="inline-flex items-center gap-2 flex-wrap">
                               {puesto.usuario?.nombre || 'Sin cliente'}
@@ -568,6 +600,7 @@ const FragmentRow = memo(function FragmentRow({
                                   Combo
                                 </span>
                               )}
+                              <CorteBadgePuesto puesto={puesto} />
                             </span>
                           </td>
                           <td className="px-3 py-2 text-gray-400">
@@ -584,6 +617,18 @@ const FragmentRow = memo(function FragmentRow({
                           </td>
                           <td className="px-3 py-2 text-right">
                             <div className="inline-flex items-center justify-end gap-1">
+                              <button
+                                type="button"
+                                onClick={() => onCortar(cuenta, puesto)}
+                                className={`p-1.5 rounded-lg ${
+                                  puestoCortado(puesto)
+                                    ? 'text-slate-300 hover:text-white hover:bg-slate-400/10'
+                                    : 'text-red-400 hover:text-red-300 hover:bg-red-400/10'
+                                }`}
+                                title={puestoCortado(puesto) ? 'Marcar como activo' : 'Marcar como cortado'}
+                              >
+                                <Scissors className="h-4 w-4" />
+                              </button>
                               <button
                                 type="button"
                                 onClick={() => onEditarPuesto(cuenta, puesto)}

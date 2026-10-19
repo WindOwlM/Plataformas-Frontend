@@ -3,6 +3,7 @@ import { Plus, Pencil, MonitorPlay } from 'lucide-react'
 import { useApi } from '../../hooks/useApi'
 import CatalogModal from './CatalogModal'
 import Button from '../ui/Button'
+import { claseFila } from '../../lib/filaSeleccion'
 
 export default function PlataformasList() {
   const [plataformas, setPlataformas] = useState([])
@@ -76,7 +77,7 @@ export default function PlataformasList() {
           plataformas.map((p) => (
             <div
               key={p.id}
-              className="px-4 py-3.5 flex items-center justify-between hover:bg-gray-700/50 transition-colors group"
+              className={claseFila(isModalOpen && plataformaEditando?.id === p.id, 'px-4 py-3.5 flex items-center justify-between hover:bg-gray-700/50 transition-colors group')}
             >
               <span className="text-white">
                 {p.nombre_plat}

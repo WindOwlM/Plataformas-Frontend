@@ -4,6 +4,7 @@ import { useApi } from '../../hooks/useApi'
 import StatCard from './StatCard'
 import Button from '../ui/Button'
 import { bucketMeta, formatFecha, mensajeRecordatorioHoy } from '../../lib/vencimientos'
+import { claseFila } from '../../lib/filaSeleccion'
 import { clavePlataforma } from '../../lib/agruparCuentas'
 import RenovarModal from './RenovarModal'
 
@@ -19,7 +20,7 @@ const tipoLabel = {
   cuenta: 'Cuenta',
 }
 
-const ItemRow = memo(function ItemRow({ item, onRenovar }) {
+const ItemRow = memo(function ItemRow({ item, onRenovar, seleccionada }) {
   const meta = bucketMeta[item.bucket]
   const esCombo = item.tipo === 'combo'
   const esHoy = item.bucket === 'hoy'
@@ -40,9 +41,12 @@ const ItemRow = memo(function ItemRow({ item, onRenovar }) {
 
   return (
     <div
-      className={`px-4 py-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 transition-colors ${
-        esCombo ? 'bg-yellow-500/5 hover:bg-yellow-500/10' : 'hover:bg-gray-700/40'
-      }`}
+      className={claseFila(
+        seleccionada,
+        `px-4 py-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 transition-colors ${
+          esCombo ? 'bg-yellow-500/5 hover:bg-yellow-500/10' : 'hover:bg-gray-700/40'
+        }`
+      )}
     >
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
@@ -221,7 +225,7 @@ export default function VencimientosPanel() {
                   </div>
                   <div className="divide-y divide-yellow-500/10">
                     {grupo.combos.map((item) => (
-                      <ItemRow key={item.id} item={item} onRenovar={abrirRenovar} />
+                      <ItemRow key={item.id} item={item} onRenovar={abrirRenovar} seleccionada={renovar?.id === item.id} />
                     ))}
                   </div>
                 </div>
@@ -234,7 +238,7 @@ export default function VencimientosPanel() {
                   </div>
                   <div className="divide-y divide-gray-700">
                     {seccion.filas.map((item) => (
-                      <ItemRow key={item.id} item={item} onRenovar={abrirRenovar} />
+                      <ItemRow key={item.id} item={item} onRenovar={abrirRenovar} seleccionada={renovar?.id === item.id} />
                     ))}
                   </div>
                 </div>

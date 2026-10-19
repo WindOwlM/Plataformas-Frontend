@@ -5,6 +5,8 @@ import ClienteModal from './ClienteModal'
 import Button from '../ui/Button'
 import { fieldClass } from '../ui/fieldStyles'
 import FechaBadge from '../ui/FechaBadge'
+import { CorteBadgePuesto } from '../ui/CorteBadges'
+import { claseFila } from '../../lib/filaSeleccion'
 
 export default function ClientesList() {
   const [clientes, setClientes] = useState([])
@@ -127,7 +129,7 @@ export default function ClientesList() {
               const expanded = expandedIds.has(cliente.id)
               return (
                 <div key={cliente.id}>
-                  <div className="px-4 py-3.5 flex items-center justify-between hover:bg-gray-700/50 transition-colors gap-3">
+                  <div className={claseFila(isModalOpen && clienteEditando?.id === cliente.id, 'px-4 py-3.5 flex items-center justify-between hover:bg-gray-700/50 transition-colors gap-3')}>
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="h-10 w-10 shrink-0 bg-indigo-600/20 rounded-full flex items-center justify-center">
                         <span className="text-sm font-medium text-indigo-300">
@@ -188,7 +190,10 @@ export default function ClientesList() {
                                   <td className="px-3 py-2 text-gray-300">{puesto.cuenta?.correo || '—'}</td>
                                   <td className="px-3 py-2 font-mono text-gray-300">{puesto.pin || '—'}</td>
                                   <td className="px-3 py-2">
-                                    <FechaBadge fecha={puesto.vencimiento_usuario} />
+                                    <span className="inline-flex items-center gap-2 flex-wrap">
+                                      <FechaBadge fecha={puesto.vencimiento_usuario} />
+                                      <CorteBadgePuesto puesto={puesto} />
+                                    </span>
                                   </td>
                                   <td className="px-3 py-2 text-gray-300">
                                     {puesto.valor_venta != null ? `$${puesto.valor_venta}` : '—'}
