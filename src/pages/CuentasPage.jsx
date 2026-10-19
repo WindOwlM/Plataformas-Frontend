@@ -53,6 +53,7 @@ export default function CuentasPage() {
   const [cuentaEditando, setCuentaEditando] = useState(null)
   const [quitar, setQuitar] = useState(null)
   const [cuentaAEliminar, setCuentaAEliminar] = useState(null)
+  const [puestoACortar, setPuestoACortar] = useState(null)
 
   const cargarCuentas = useCallback(async () => {
     const correo = correoFiltro || correoApi
@@ -218,15 +219,17 @@ export default function CuentasPage() {
     setQuitar({ cuenta, puesto })
   }, [])
 
-  const marcarCortado = useCallback(async (cuenta, puesto) => {
+  const marcarCortado = useCallback(async () => {
+    const cuenta = puestoACortar?.cuenta
+    const puesto = puestoACortar?.puesto
     if (!cuenta?.id || !puesto?.id) return
-    const estado = puestoCortado(puesto) ? 'activa' : 'cortado'
     const { error } = await request(`/cuentas/${cuenta.id}/puestos/${puesto.id}`, {
       method: 'PATCH',
-      body: JSON.stringify({ estado }),
+      body: JSON.stringify({ estado: 'cortado' }),
     })
+    setPuestoACortar(null)
     if (!error) await cargarCuentas()
-  }, [request, cargarCuentas])
+  }, [puestoACortar, request, cargarCuentas])
 
   const eliminarCuenta = useCallback(async () => {
     if (!cuentaAEliminar?.id) return
@@ -424,7 +427,7 @@ export default function CuentasPage() {
                         onEditarPuesto={abrirEditarPuesto}
                         onQuitar={handleQuitar}
                         onEliminarCuenta={setCuentaAEliminar}
-                        onCortar={marcarCortado}
+                        onCortar={setPuestoACortar}
                         onBorrarDefinitivo={borrarDefinitivo}
                         seleccionada={
                           cuentaEditando?.id === cuenta.id
@@ -487,6 +490,16 @@ export default function CuentasPage() {
         title="Eliminar cuenta"
         message={`¿Eliminar ${cuentaAEliminar?.correo}? Se quitarán también los clientes asignados a esta cuenta.`}
         confirmText="Eliminar"
+        variant="danger"
+      />
+
+      <ConfirmModal
+        isOpen={!!puestoACortar}
+        onClose={() => setPuestoACortar(null)}
+        onConfirm={marcarCortado}
+        title="Marcar para quitar del perfil"
+        message={`¿Dejar a ${puestoACortar?.puesto?.usuario?.nombre || 'este cliente'} como recordatorio en ${puestoACortar?.cuenta?.correo || 'esta cuenta'}? El puesto se libera y quedará pendiente de borrarlo del perfil.`}
+        confirmText="Cortar"
         variant="danger"
       />
     </div>
@@ -660,7 +673,7 @@ const FragmentRow = memo(function FragmentRow({
                                 <>
                                   <button
                                     type="button"
-                                    onClick={() => onCortar(cuenta, puesto)}
+                                    onClick={() => onCortar({ cuenta, puesto })}
                                     className="p-1.5 rounded-lg text-red-400 hover:text-red-300 hover:bg-red-400/10"
                                     title="Marcar para quitar del perfil"
                                   >
