@@ -143,6 +143,27 @@ export default function CuentasPage() {
     if (!result.error) await cargarCuentas()
   }, [quitar, request, cargarCuentas])
 
+  const borrarDefinitivo = useCallback(async (cuenta, puesto) => {
+    if (!cuenta?.id || !puesto?.id) return
+    const { error } = await request(`/cuentas/${cuenta.id}/puestos/${puesto.id}`, { method: 'DELETE' })
+    if (!error) await cargarCuentas()
+  }, [request, cargarCuentas])
+
+  const reubicarCliente = useCallback(async (idCuentaDestino) => {
+    if (!quitar?.cuenta?.id || !quitar?.puesto?.id || !idCuentaDestino) return false
+    const { error } = await request(
+      `/cuentas/${quitar.cuenta.id}/puestos/${quitar.puesto.id}/reubicar`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ id_cuenta: idCuentaDestino }),
+      }
+    )
+    if (error) return false
+    setQuitar(null)
+    await cargarCuentas()
+    return true
+  }, [quitar, request, cargarCuentas])
+
   const guardarCuenta = useCallback(async (cuentaData) => {
     const result = cuentaEditando?.id
       ? await request(`/cuentas/${cuentaEditando.id}`, {
@@ -404,6 +425,7 @@ export default function CuentasPage() {
                         onQuitar={handleQuitar}
                         onEliminarCuenta={setCuentaAEliminar}
                         onCortar={marcarCortado}
+                        onBorrarDefinitivo={borrarDefinitivo}
                         seleccionada={
                           cuentaEditando?.id === cuenta.id
                           || puestoCuenta?.id === cuenta.id
@@ -451,8 +473,11 @@ export default function CuentasPage() {
         onClose={() => setQuitar(null)}
         onEliminar={() => quitarCliente('eliminar')}
         onUbicar={() => quitarCliente('ubicar')}
+        onReubicar={reubicarCliente}
         nombre={quitar?.puesto?.usuario?.nombre}
         correo={quitar?.cuenta?.correo}
+        cuentaId={quitar?.cuenta?.id}
+        plataformaId={quitar?.cuenta?.id_plataforma}
       />
 
       <ConfirmModal
@@ -482,6 +507,7 @@ const FragmentRow = memo(function FragmentRow({
   onQuitar,
   onEliminarCuenta,
   onCortar,
+  onBorrarDefinitivo,
   seleccionada,
   puestoSeleccionadoId,
 }) {
@@ -587,10 +613,18 @@ const FragmentRow = memo(function FragmentRow({
                     {puestos.map((puesto, index) => {
                       const esFiltro = clienteId && puesto.id_usuario === clienteId
                       const esPuestoSel = puestoSeleccionadoId && puesto.id === puestoSeleccionadoId
+                      const recordatorio = puestoCortado(puesto)
                       return (
                         <tr
                           key={puesto.id || index}
-                          className={claseFila(esPuestoSel, esFiltro ? 'bg-indigo-500/10' : '')}
+                          className={claseFila(
+                            esPuestoSel,
+                            recordatorio
+                              ? 'bg-red-500/10'
+                              : esFiltro
+                                ? 'bg-indigo-500/10'
+                                : ''
+                          )}
                         >
                           <td className="px-3 py-2 text-white">
                             <span className="inline-flex items-center gap-2 flex-wrap">
@@ -602,6 +636,11 @@ const FragmentRow = memo(function FragmentRow({
                               )}
                               <CorteBadgePuesto puesto={puesto} />
                             </span>
+                            {recordatorio ? (
+                              <p className="text-[11px] text-red-300 mt-1">
+                                Recuerda quitarlo de {cuenta.correo} y luego bórralo de aquí
+                              </p>
+                            ) : null}
                           </td>
                           <td className="px-3 py-2 text-gray-400">
                             {puesto.usuario?.numero_telefono || '—'}
@@ -617,34 +656,44 @@ const FragmentRow = memo(function FragmentRow({
                           </td>
                           <td className="px-3 py-2 text-right">
                             <div className="inline-flex items-center justify-end gap-1">
-                              <button
-                                type="button"
-                                onClick={() => onCortar(cuenta, puesto)}
-                                className={`p-1.5 rounded-lg ${
-                                  puestoCortado(puesto)
-                                    ? 'text-slate-300 hover:text-white hover:bg-slate-400/10'
-                                    : 'text-red-400 hover:text-red-300 hover:bg-red-400/10'
-                                }`}
-                                title={puestoCortado(puesto) ? 'Marcar como activo' : 'Marcar como cortado'}
-                              >
-                                <Scissors className="h-4 w-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => onEditarPuesto(cuenta, puesto)}
-                                className="p-1.5 text-gray-400 hover:text-indigo-400 hover:bg-indigo-400/10 rounded-lg"
-                                title="Editar PIN, precio y vencimiento"
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => onQuitar(cuenta, puesto)}
-                                className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg"
-                                title="Quitar de la cuenta"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
+                              {!recordatorio ? (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => onCortar(cuenta, puesto)}
+                                    className="p-1.5 rounded-lg text-red-400 hover:text-red-300 hover:bg-red-400/10"
+                                    title="Marcar para quitar del perfil"
+                                  >
+                                    <Scissors className="h-4 w-4" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => onEditarPuesto(cuenta, puesto)}
+                                    className="p-1.5 text-gray-400 hover:text-indigo-400 hover:bg-indigo-400/10 rounded-lg"
+                                    title="Editar PIN, precio y vencimiento"
+                                  >
+                                    <Pencil className="h-4 w-4" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => onQuitar(cuenta, puesto)}
+                                    className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg"
+                                    title="Quitar de la cuenta"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </button>
+                                </>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  variant="danger"
+                                  onClick={() => onBorrarDefinitivo(cuenta, puesto)}
+                                  title="Ya lo quitaste del perfil: borrar recordatorio"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                  Borrar de esta cuenta
+                                </Button>
+                              )}
                             </div>
                           </td>
                         </tr>

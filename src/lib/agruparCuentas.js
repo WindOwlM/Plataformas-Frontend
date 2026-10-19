@@ -19,6 +19,7 @@ function ordenarPorCombo(cuentas) {
   for (const cuenta of cuentas) {
     for (const puesto of puestosDe(cuenta)) {
       if (!puesto.id_usuario) continue
+      if (String(puesto.estado || '').toLowerCase() === 'cortado') continue
       const ids = porUsuario.get(puesto.id_usuario) || []
       ids.push(cuenta.id)
       porUsuario.set(puesto.id_usuario, ids)
@@ -69,7 +70,7 @@ export function esComboPuesto(puesto, cuentas, clienteId) {
   const id = clienteId || puesto.id_usuario
   let veces = 0
   for (const cuenta of cuentas) {
-    if (puestosDe(cuenta).some((p) => p.id_usuario === id)) veces += 1
+    if (puestosDe(cuenta).some((p) => p.id_usuario === id && String(p.estado || '').toLowerCase() !== 'cortado')) veces += 1
     if (veces > 1) return true
   }
   return false
