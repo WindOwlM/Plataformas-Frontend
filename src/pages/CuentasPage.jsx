@@ -1,6 +1,6 @@
 import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { ChevronDown, ChevronRight, Copy, Loader2, MonitorPlay, Pencil, Plus, Scissors, Trash2, UserPlus } from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, ChevronRight, Copy, Loader2, MonitorPlay, Pencil, Plus, Scissors, Trash2, UserPlus } from 'lucide-react'
 import { useApi } from '../hooks/useApi'
 import { fieldClass } from '../components/ui/fieldStyles'
 import PuestoModal from '../components/dashboard/PuestoModal'
@@ -19,7 +19,7 @@ import {
   etiquetaEstado,
   puestosDe,
 } from '../lib/cuentaEstado'
-import { esComboPuesto, seccionesPorPlataforma } from '../lib/agruparCuentas'
+import { esComboPuesto, filtrarCuentasTabla, seccionesPorPlataforma } from '../lib/agruparCuentas'
 import FechaBadge from '../components/ui/FechaBadge'
 import CorteBadges, { CorteBadgePuesto } from '../components/ui/CorteBadges'
 import { claseFila } from '../lib/filaSeleccion'
@@ -32,6 +32,91 @@ function estadoBadge(estado) {
     vendida: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
   }
   return colors[estado] || colors.disponible
+}
+
+const thFilterClass =
+  'mt-1.5 w-full max-w-[9.5rem] rounded-md border border-gray-700 bg-gray-800 px-1.5 py-1 text-[11px] font-medium normal-case tracking-normal text-gray-200'
+
+function ThCol({ label, campo, sort, onSort, children }) {
+  const active = sort.campo === campo
+  return (
+    <th className="px-3 py-2.5 font-medium align-top">
+      <button
+        type="button"
+        onClick={() => onSort(campo)}
+        className={`inline-flex items-center gap-1 uppercase tracking-wide hover:text-white ${active ? 'text-white' : ''}`}
+      >
+        {label}
+        {active ? (
+          sort.dir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+        ) : (
+          <ArrowUpDown className="h-3 w-3 opacity-40" />
+        )}
+      </button>
+      {children}
+    </th>
+  )
+}
+
+function EncabezadoTabla({
+  sort,
+  onSort,
+  filtroProveedor,
+  setFiltroProveedor,
+  proveedoresTabla,
+  filtroEstado,
+  setFiltroEstado,
+  filtroCorte,
+  setFiltroCorte,
+}) {
+  return (
+    <thead className="bg-gray-900/60 text-gray-400 text-xs uppercase tracking-wide">
+      <tr>
+        <ThCol label="Correo" campo="correo" sort={sort} onSort={onSort} />
+        <ThCol label="Contraseña" campo="contrasena" sort={sort} onSort={onSort} />
+        <ThCol label="Proveedor" campo="proveedor" sort={sort} onSort={onSort}>
+          <select
+            aria-label="Filtrar proveedor"
+            value={filtroProveedor}
+            onChange={(e) => setFiltroProveedor(e.target.value)}
+            className={thFilterClass}
+          >
+            <option value="">Todos</option>
+            {proveedoresTabla.map((nombre) => (
+              <option key={nombre} value={nombre}>{nombre}</option>
+            ))}
+          </select>
+        </ThCol>
+        <ThCol label="Estado" campo="estado" sort={sort} onSort={onSort}>
+          <select
+            aria-label="Filtrar estado"
+            value={filtroEstado}
+            onChange={(e) => setFiltroEstado(e.target.value)}
+            className={thFilterClass}
+          >
+            <option value="">Todos</option>
+            <option value="disponible">Disponible</option>
+            <option value="llena">Llena</option>
+          </select>
+        </ThCol>
+        <ThCol label="Vence" campo="vence" sort={sort} onSort={onSort} />
+        <ThCol label="Costo" campo="costo" sort={sort} onSort={onSort} />
+        <ThCol label="Puestos" campo="puestos" sort={sort} onSort={onSort}>
+          <select
+            aria-label="Filtrar corte"
+            value={filtroCorte}
+            onChange={(e) => setFiltroCorte(e.target.value)}
+            className={thFilterClass}
+          >
+            <option value="">Todos</option>
+            <option value="por_cortar">Por cortar</option>
+            <option value="cortado">Cortado</option>
+          </select>
+        </ThCol>
+        <th className="px-3 py-2.5 font-medium"> </th>
+      </tr>
+    </thead>
+  )
 }
 
 export default function CuentasPage() {
@@ -56,6 +141,10 @@ export default function CuentasPage() {
   const [quitar, setQuitar] = useState(null)
   const [cuentaAEliminar, setCuentaAEliminar] = useState(null)
   const [puestoACortar, setPuestoACortar] = useState(null)
+  const [sort, setSort] = useState({ campo: '', dir: 'asc' })
+  const [filtroEstado, setFiltroEstado] = useState('')
+  const [filtroProveedor, setFiltroProveedor] = useState('')
+  const [filtroCorte, setFiltroCorte] = useState('')
 
   const cargarCuentas = useCallback(async () => {
     const correo = correoFiltro || correoApi
@@ -303,8 +392,29 @@ export default function CuentasPage() {
         puestosDe(c).some((p) => String(p.usuario?.nombre || '').toLowerCase().includes(uq))
       )
     }
-    return list
-  }, [cuentas, correoFiltro, correoQuery, usuarioQuery, clienteId])
+    return filtrarCuentasTabla(list, {
+      estado: filtroEstado,
+      proveedor: filtroProveedor,
+      corte: filtroCorte,
+    })
+  }, [cuentas, correoFiltro, correoQuery, usuarioQuery, clienteId, filtroEstado, filtroProveedor, filtroCorte])
+
+  const proveedoresTabla = useMemo(() => {
+    const set = new Set()
+    for (const c of cuentas) {
+      const n = String(c.proveedor?.nombre_prov || '').trim()
+      if (n) set.add(n)
+    }
+    return [...set].sort((a, b) => a.localeCompare(b, 'es'))
+  }, [cuentas])
+
+  const onSort = useCallback((campo) => {
+    setSort((prev) => {
+      if (prev.campo !== campo) return { campo, dir: 'asc' }
+      if (prev.dir === 'asc') return { campo, dir: 'desc' }
+      return { campo: '', dir: 'asc' }
+    })
+  }, [])
 
   const tituloLista = clienteNombre
     ? `Cuentas de ${clienteNombre}`
@@ -313,8 +423,21 @@ export default function CuentasPage() {
       : plataformaNombre
   const sinFiltro = !plataformaId && !clienteId && !correoFiltro && !correoQuery && !usuarioQuery
 
-  const secciones = useMemo(() => seccionesPorPlataforma(cuentasVista), [cuentasVista])
+  const secciones = useMemo(() => seccionesPorPlataforma(cuentasVista, sort), [cuentasVista, sort])
   const colSpan = 8
+  const hayFiltroColumna = !!(filtroEstado || filtroProveedor || filtroCorte)
+
+  const propsEncabezado = {
+    sort,
+    onSort,
+    filtroProveedor,
+    setFiltroProveedor,
+    proveedoresTabla,
+    filtroEstado,
+    setFiltroEstado,
+    filtroCorte,
+    setFiltroCorte,
+  }
 
   const filasPorSeccion = useMemo(
     () =>
@@ -405,7 +528,7 @@ export default function CuentasPage() {
         <div className="flex items-center justify-center py-16">
           <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
         </div>
-      ) : cuentasVista.length === 0 ? (
+      ) : cuentas.length === 0 ? (
         <div className="bg-gray-800 rounded-xl border border-gray-700 p-12 text-center">
           <p className="text-gray-400">
             {clienteNombre
@@ -423,7 +546,25 @@ export default function CuentasPage() {
             <p className="text-sm text-gray-300 font-medium">{tituloLista}</p>
             <p className="text-xs text-gray-500">{cuentasVista.length} cuenta{cuentasVista.length === 1 ? '' : 's'}</p>
           </div>
-          {filasPorSeccion.map((seccion) => (
+          {filasPorSeccion.length === 0 ? (
+            <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
+              <div className="px-4 py-3 border-b border-gray-700 flex items-center justify-between bg-gray-900/40">
+                <p className="text-sm text-white font-semibold">{plataformaNombre}</p>
+              </div>
+              <table className="w-full text-sm text-left">
+                <EncabezadoTabla {...propsEncabezado} />
+                <tbody>
+                  <tr>
+                    <td colSpan={colSpan} className="px-3 py-10 text-center text-gray-400">
+                      {hayFiltroColumna
+                        ? 'Ninguna cuenta coincide con ese filtro. Cambia el filtro de la columna para volver a verlas.'
+                        : `No hay cuentas para ${plataformaNombre}`}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          ) : filasPorSeccion.map((seccion) => (
             <div key={seccion.id} className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
               <div className="px-4 py-3 border-b border-gray-700 flex items-center justify-between bg-gray-900/40">
                 <p className="text-sm text-white font-semibold">{seccion.nombre}</p>
@@ -433,18 +574,7 @@ export default function CuentasPage() {
               </div>
               <div>
                 <table className="w-full text-sm text-left">
-                  <thead className="bg-gray-900/60 text-gray-400 text-xs uppercase tracking-wide">
-                    <tr>
-                      <th className="px-3 py-2.5 font-medium">Correo</th>
-                      <th className="px-3 py-2.5 font-medium">Contraseña</th>
-                      <th className="px-3 py-2.5 font-medium">Proveedor</th>
-                      <th className="px-3 py-2.5 font-medium">Estado</th>
-                      <th className="px-3 py-2.5 font-medium">Vence</th>
-                      <th className="px-3 py-2.5 font-medium">Costo</th>
-                      <th className="px-3 py-2.5 font-medium">Puestos</th>
-                      <th className="px-3 py-2.5 font-medium"> </th>
-                    </tr>
-                  </thead>
+                  <EncabezadoTabla {...propsEncabezado} />
                   <tbody className="divide-y divide-gray-700">
                     {seccion.filas.map(({ cuenta, puestos, expanded }) => (
                       <FragmentRow

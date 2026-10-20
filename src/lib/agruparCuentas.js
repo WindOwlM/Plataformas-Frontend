@@ -1,4 +1,5 @@
-import { puestosDe } from './cuentaEstado'
+import { etiquetaEstado, puestosDe } from './cuentaEstado'
+import { resumenCorte } from './vencimientos'
 
 export function clavePlataforma(nombre) {
   const n = String(nombre || 'Sin plataforma').toLowerCase()
@@ -46,7 +47,44 @@ function ordenarPorCombo(cuentas) {
     .flatMap((grupo) => grupo.sort((a, b) => (a.correo || '').localeCompare(b.correo || '')))
 }
 
-export function seccionesPorPlataforma(cuentas) {
+export function valorColumna(cuenta, campo) {
+  if (campo === 'costo') return Number(cuenta.precio_costo) || 0
+  if (campo === 'puestos') return Number(cuenta.ocupados) || 0
+  if (campo === 'vence') return String(cuenta.fecha_vencimiento || '').slice(0, 10)
+  if (campo === 'estado') return etiquetaEstado(cuenta.estado)
+  if (campo === 'proveedor') return String(cuenta.proveedor?.nombre_prov || '')
+  if (campo === 'contrasena') return String(cuenta.contrasena || '')
+  return String(cuenta.correo || '')
+}
+
+export function ordenarCuentas(cuentas, sort) {
+  if (!sort?.campo) return ordenarPorCombo(cuentas)
+  const mul = sort.dir === 'desc' ? -1 : 1
+  return [...cuentas].sort((a, b) => {
+    const va = valorColumna(a, sort.campo)
+    const vb = valorColumna(b, sort.campo)
+    if (typeof va === 'number') return (va - vb) * mul
+    return String(va).localeCompare(String(vb), 'es', { numeric: true }) * mul
+  })
+}
+
+export function filtrarCuentasTabla(cuentas, { estado, proveedor, corte } = {}) {
+  let list = cuentas
+  if (estado) {
+    list = list.filter((c) => etiquetaEstado(c.estado) === estado)
+  }
+  if (proveedor) {
+    list = list.filter((c) => String(c.proveedor?.nombre_prov || '') === proveedor)
+  }
+  if (corte === 'por_cortar') {
+    list = list.filter((c) => resumenCorte(puestosDe(c)).porCortar > 0)
+  } else if (corte === 'cortado') {
+    list = list.filter((c) => resumenCorte(puestosDe(c)).cortados > 0)
+  }
+  return list
+}
+
+export function seccionesPorPlataforma(cuentas, sort) {
   const map = new Map()
 
   for (const cuenta of cuentas) {
@@ -60,7 +98,7 @@ export function seccionesPorPlataforma(cuentas) {
     .sort((a, b) => clavePlataforma(a.nombre).localeCompare(clavePlataforma(b.nombre), 'es'))
     .map((seccion) => ({
       ...seccion,
-      cuentas: ordenarPorCombo(seccion.cuentas),
+      cuentas: ordenarCuentas(seccion.cuentas, sort),
     }))
 }
 
