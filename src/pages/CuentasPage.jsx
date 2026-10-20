@@ -1,4 +1,5 @@
 import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { ChevronDown, ChevronRight, Copy, Loader2, MonitorPlay, Pencil, Plus, Scissors, Trash2, UserPlus } from 'lucide-react'
 import { useApi } from '../hooks/useApi'
 import { fieldClass } from '../components/ui/fieldStyles'
@@ -34,6 +35,7 @@ function estadoBadge(estado) {
 }
 
 export default function CuentasPage() {
+  const [searchParams] = useSearchParams()
   const { request, loading } = useApi()
   const [plataformas, setPlataformas] = useState([])
   const [plataformaId, setPlataformaId] = useState('')
@@ -84,6 +86,28 @@ export default function CuentasPage() {
   }, [request])
 
   useEffect(() => {
+    const plat = searchParams.get('plataforma')
+    const correo = searchParams.get('correo')
+    const cliente = searchParams.get('cliente')
+    const cuenta = searchParams.get('cuenta')
+    if (plat) setPlataformaId(plat)
+    else if (correo || cliente) setPlataformaId((prev) => prev || 'todas')
+    if (correo) {
+      setCorreoFiltro(correo)
+      setCorreoQuery(correo)
+      setCorreoApi(correo)
+    }
+    if (cliente) setClienteId(cliente)
+    if (cuenta) {
+      setExpandedIds((prev) => {
+        const next = new Set(prev)
+        next.add(cuenta)
+        return next
+      })
+    }
+  }, [searchParams])
+
+  useEffect(() => {
     cargarCuentas()
   }, [cargarCuentas])
 
@@ -118,7 +142,7 @@ export default function CuentasPage() {
     }, 200)
   }, [])
 
-  const guardarPuesto = useCallback(async (puestoData) => {
+  const guardarPuesto = useCallback(async (puestoData, extras = []) => {
     const cuentaId = puestoCuenta?.id || puestoData.id_cuenta
     if (!cuentaId) return false
 
@@ -132,6 +156,16 @@ export default function CuentasPage() {
           body: JSON.stringify(puestoData),
         })
     if (result.error) return false
+
+    for (const extra of extras) {
+      if (!extra.id_cuenta) continue
+      const extraResult = await request(`/cuentas/${extra.id_cuenta}/puestos`, {
+        method: 'POST',
+        body: JSON.stringify(extra),
+      })
+      if (extraResult.error) return false
+    }
+
     await cargarCuentas()
     return true
   }, [puestoCuenta, request, cargarCuentas])
@@ -433,6 +467,7 @@ export default function CuentasPage() {
                           cuentaEditando?.id === cuenta.id
                           || puestoCuenta?.id === cuenta.id
                           || cuentaAEliminar?.id === cuenta.id
+                          || searchParams.get('cuenta') === cuenta.id
                         }
                         puestoSeleccionadoId={puestoEditando?.id || quitar?.puesto?.id}
                       />
@@ -619,6 +654,7 @@ const FragmentRow = memo(function FragmentRow({
                       <th className="px-3 py-2 font-medium text-left">PIN</th>
                       <th className="px-3 py-2 font-medium text-left">Vencimiento</th>
                       <th className="px-3 py-2 font-medium text-left">Venta</th>
+                      <th className="px-3 py-2 font-medium text-left">Notas</th>
                       <th className="px-3 py-2 font-medium text-right"> </th>
                     </tr>
                   </thead>
@@ -667,6 +703,9 @@ const FragmentRow = memo(function FragmentRow({
                           <td className="px-3 py-2 text-gray-300">
                             {puesto.valor_venta != null ? `$${puesto.valor_venta}` : '—'}
                           </td>
+                          <td className="px-3 py-2 text-gray-400 max-w-[200px]">
+                            {puesto.notas || '—'}
+                          </td>
                           <td className="px-3 py-2 text-right">
                             <div className="inline-flex items-center justify-end gap-1">
                               {!recordatorio ? (
@@ -683,7 +722,7 @@ const FragmentRow = memo(function FragmentRow({
                                     type="button"
                                     onClick={() => onEditarPuesto(cuenta, puesto)}
                                     className="p-1.5 text-gray-400 hover:text-indigo-400 hover:bg-indigo-400/10 rounded-lg"
-                                    title="Editar PIN, precio y vencimiento"
+                                    title="Editar PIN, precio, vencimiento y notas"
                                   >
                                     <Pencil className="h-4 w-4" />
                                   </button>

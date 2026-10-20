@@ -62,9 +62,10 @@ export default function CuentaModal({
             vencimiento_usuario: p.vencimiento_usuario || '',
             es_combo: p.es_combo || false,
             valor_venta: p.valor_venta || '',
+            notas: p.notas || '',
           })))
         } else {
-          setPuestos([{ id_usuario: '', pin: '', vencimiento_usuario: '', es_combo: false, valor_venta: '' }])
+          setPuestos([{ id_usuario: '', pin: '', vencimiento_usuario: '', es_combo: false, valor_venta: '', notas: '' }])
         }
       } else {
         setCorreo('')
@@ -74,7 +75,7 @@ export default function CuentaModal({
         setPrecioCosto('')
         setFechaVencimiento('')
         setNotas('')
-        setPuestos([{ id_usuario: '', pin: '', vencimiento_usuario: '', es_combo: false, valor_venta: '' }])
+        setPuestos([{ id_usuario: '', pin: '', vencimiento_usuario: '', es_combo: false, valor_venta: '', notas: '' }])
       }
     }
   }, [isOpen, cuenta])
@@ -116,7 +117,7 @@ export default function CuentaModal({
       if (prev.length >= maxPuestos) return prev
       return [
         ...prev,
-        { id_usuario: '', pin: '', vencimiento_usuario: '', es_combo: false, valor_venta: '' },
+        { id_usuario: '', pin: '', vencimiento_usuario: '', es_combo: false, valor_venta: '', notas: '' },
       ]
     })
   }, [maxPuestos])
@@ -145,6 +146,7 @@ export default function CuentaModal({
       vencimiento_usuario: p.vencimiento_usuario || null,
       es_combo: p.es_combo || false,
       valor_venta: parseFloat(p.valor_venta) || 0,
+      notas: p.notas?.trim() || null,
     }))
 
     const cuentaData = {
@@ -333,6 +335,16 @@ export default function CuentaModal({
                     placeholder="0.00"
                     value={puesto.valor_venta}
                     onChange={(e) => actualizarPuesto(index, 'valor_venta', e.target.value)}
+                  />
+                </div>
+                <div className="mt-3">
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Notas</label>
+                  <textarea
+                    rows={2}
+                    value={puesto.notas || ''}
+                    onChange={(e) => actualizarPuesto(index, 'notas', e.target.value)}
+                    placeholder="Observaciones de este cliente"
+                    className={fieldClass}
                   />
                 </div>
 

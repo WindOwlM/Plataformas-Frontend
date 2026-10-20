@@ -174,6 +174,7 @@ export default function ClientesList() {
                                 <th className="px-3 py-2 font-medium text-left">PIN</th>
                                 <th className="px-3 py-2 font-medium text-left">Vencimiento</th>
                                 <th className="px-3 py-2 font-medium text-left">Venta</th>
+                                <th className="px-3 py-2 font-medium text-left">Notas</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-700 bg-gray-900/40">
@@ -197,6 +198,9 @@ export default function ClientesList() {
                                   </td>
                                   <td className="px-3 py-2 text-gray-300">
                                     {puesto.valor_venta != null ? `$${puesto.valor_venta}` : '—'}
+                                  </td>
+                                  <td className="px-3 py-2 text-gray-400 max-w-[220px]">
+                                    {puesto.notas || '—'}
                                   </td>
                                 </tr>
                               ))}

@@ -1,5 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
-import { Clock, CalendarClock, CircleAlert, Copy, Loader2 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Clock, CalendarClock, CircleAlert, Copy, ExternalLink, Loader2 } from 'lucide-react'
 import { useApi } from '../../hooks/useApi'
 import StatCard from './StatCard'
 import Button from '../ui/Button'
@@ -20,10 +21,27 @@ const tipoLabel = {
   cuenta: 'Cuenta',
 }
 
-const ItemRow = memo(function ItemRow({ item, onRenovar, seleccionada }) {
+function rutaCuenta(item) {
+  const params = new URLSearchParams()
+  const fila = item?.tipo === 'combo'
+    ? (item.asignaciones?.[0] || item.renovaciones?.[0] || {})
+    : item || {}
+  const plataforma = fila.id_plataforma || item?.id_plataforma
+  const correo = fila.correo || item?.correo
+  const cliente = item?.id_usuario
+  const cuenta = fila.id_cuenta || item?.id_cuenta
+  if (plataforma) params.set('plataforma', plataforma)
+  if (correo) params.set('correo', correo)
+  else if (cliente) params.set('cliente', cliente)
+  if (cuenta) params.set('cuenta', cuenta)
+  return `/dashboard/cuentas?${params.toString()}`
+}
+
+const ItemRow = memo(function ItemRow({ item, onRenovar, onVerCuenta, seleccionada }) {
   const meta = bucketMeta[item.bucket]
   const esCombo = item.tipo === 'combo'
   const esHoy = item.bucket === 'hoy'
+  const esVencida = item.bucket === 'vencida'
   const [copiado, setCopiado] = useState(false)
   const plataformas = item.plataformas?.length
     ? item.plataformas.join(' · ')
@@ -85,12 +103,19 @@ const ItemRow = memo(function ItemRow({ item, onRenovar, seleccionada }) {
             {copiado ? 'Copiado' : 'Copiar mensaje'}
           </Button>
         ) : null}
+        {esVencida ? (
+          <Button size="sm" variant="secondary" onClick={() => onVerCuenta(item)}>
+            <ExternalLink className="h-3.5 w-3.5" />
+            Ver cuenta
+          </Button>
+        ) : null}
       </div>
     </div>
   )
 })
 
 export default function VencimientosPanel() {
+  const navigate = useNavigate()
   const { request, loading } = useApi()
   const [payload, setPayload] = useState({ items: [], counts: { hoy: 0, manana: 0, vencida: 0 } })
   const [filtro, setFiltro] = useState(null)
@@ -113,6 +138,10 @@ export default function VencimientosPanel() {
 
   function abrirRenovar(item) {
     setRenovar(item)
+  }
+
+  function verCuenta(item) {
+    navigate(rutaCuenta(item))
   }
 
   const items = payload.items
@@ -225,7 +254,7 @@ export default function VencimientosPanel() {
                   </div>
                   <div className="divide-y divide-yellow-500/10">
                     {grupo.combos.map((item) => (
-                      <ItemRow key={item.id} item={item} onRenovar={abrirRenovar} seleccionada={renovar?.id === item.id} />
+                      <ItemRow key={item.id} item={item} onRenovar={abrirRenovar} onVerCuenta={verCuenta} seleccionada={renovar?.id === item.id} />
                     ))}
                   </div>
                 </div>
@@ -238,7 +267,7 @@ export default function VencimientosPanel() {
                   </div>
                   <div className="divide-y divide-gray-700">
                     {seccion.filas.map((item) => (
-                      <ItemRow key={item.id} item={item} onRenovar={abrirRenovar} seleccionada={renovar?.id === item.id} />
+                      <ItemRow key={item.id} item={item} onRenovar={abrirRenovar} onVerCuenta={verCuenta} seleccionada={renovar?.id === item.id} />
                     ))}
                   </div>
                 </div>
