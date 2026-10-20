@@ -136,7 +136,7 @@ export default function ClientesList() {
                 || clienteRenovar?.id === cliente.id
               return (
                 <div key={cliente.id}>
-                  <div className={claseFila(seleccionada, 'px-4 py-3.5 flex items-center justify-between hover:bg-gray-700/50 transition-colors gap-3')}>
+                  <div className={claseFila(seleccionada, 'px-4 py-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between hover:bg-gray-700/50 transition-colors gap-3')}>
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="h-10 w-10 shrink-0 bg-indigo-600/20 rounded-full flex items-center justify-center">
                         <span className="text-sm font-medium text-indigo-300">
@@ -152,7 +152,7 @@ export default function ClientesList() {
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1 shrink-0">
+                    <div className="flex flex-wrap items-center gap-1 shrink-0">
                       <Button
                         size="sm"
                         variant="secondary"
@@ -182,8 +182,8 @@ export default function ClientesList() {
                       {cuentas.length === 0 ? (
                         <p className="text-sm text-gray-500 py-2">Este cliente no tiene cuentas asignadas</p>
                       ) : (
-                        <div className="rounded-lg border border-gray-700 overflow-hidden">
-                          <table className="w-full text-sm">
+                        <div className="rounded-lg border border-gray-700 overflow-x-auto">
+                          <table className="min-w-[640px] w-full text-sm">
                             <thead className="bg-gray-900/60 text-gray-400 text-xs uppercase">
                               <tr>
                                 <th className="px-3 py-2 font-medium text-left">Plataforma</th>

@@ -31,7 +31,7 @@ export default function AppShell() {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600">
               <Zap className="h-5 w-5 text-white" />
             </div>
-            <h1 className="text-lg font-bold tracking-tight">Streaming Manager</h1>
+            <h1 className="text-base sm:text-lg font-bold tracking-tight truncate">Streaming Manager</h1>
           </div>
 
           <div className="flex items-center gap-3">
@@ -71,7 +71,7 @@ export default function AppShell() {
           </nav>
         </aside>
 
-        <main className="flex-1 min-w-0 px-4 py-6 sm:px-6 lg:px-8">
+        <main className="flex-1 min-w-0 px-3 py-4 sm:px-6 sm:py-6 lg:px-8">
           <div className="w-full">
             <Outlet />
           </div>

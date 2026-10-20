@@ -73,6 +73,12 @@ export function mensajeRecordatorioHoy(item) {
 
   if (filas.length > 0) {
     for (const fila of filas) agregar(fila.plataforma, fila.correo, fila.valor ?? fila.valor_venta)
+  } else if (item?.tipo === 'por_ubicar') {
+    const plat = String(item?.plataforma || '').trim()
+    const mail = String(item?.correo || '').trim()
+    if (plat) {
+      cuentas.push({ plat, mail: mail || 'Por ubicar', valor: Number(item?.valor) || 0 })
+    }
   } else {
     agregar(item?.plataforma, item?.correo || item?.nombre, item?.valor)
   }

@@ -4,7 +4,7 @@ import Button from '../ui/Button'
 import InputField from '../ui/InputField'
 import Modal from '../ui/Modal'
 import { fieldClass } from '../ui/fieldStyles'
-import { cuentaLlena, etiquetaEstado } from '../../lib/cuentaEstado'
+import { cuentaLlena, etiquetaOpcionCuenta, ordenarCuentasPorCupo } from '../../lib/cuentaEstado'
 
 export default function ReubicarModal({ isOpen, onClose, onSubmit, pendiente }) {
   const { request } = useApi()
@@ -100,15 +100,15 @@ export default function ReubicarModal({ isOpen, onClose, onSubmit, pendiente }) 
             disabled={!idPlataforma}
           >
             <option value="">Selecciona cuenta</option>
-            {cuentasFiltradas.map((c) => (
+            {ordenarCuentasPorCupo(cuentasFiltradas).map((c) => (
               <option key={c.id} value={c.id} disabled={cuentaLlena(c)}>
-                {c.correo} ({etiquetaEstado(c.estado)} · {c.ocupados ?? 0}/{c.max_puestos ?? 5})
+                {etiquetaOpcionCuenta(c)}
               </option>
             ))}
           </select>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <InputField
             id="pin-reubicar"
             label="PIN / Clave"

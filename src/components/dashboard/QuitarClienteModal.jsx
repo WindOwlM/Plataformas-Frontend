@@ -4,7 +4,7 @@ import { useApi } from '../../hooks/useApi'
 import Button from '../ui/Button'
 import Modal from '../ui/Modal'
 import { fieldClass } from '../ui/fieldStyles'
-import { cuentaLlena, etiquetaEstado } from '../../lib/cuentaEstado'
+import { cuentaLlena, etiquetaOpcionCuenta, ordenarCuentasPorCupo } from '../../lib/cuentaEstado'
 
 export default function QuitarClienteModal({
   isOpen,
@@ -71,12 +71,11 @@ export default function QuitarClienteModal({
               className={fieldClass}
             >
               <option value="">Selecciona una cuenta con cupo</option>
-              {cuentas.map((c) => {
+              {ordenarCuentasPorCupo(cuentas).map((c) => {
                 const llena = cuentaLlena(c)
                 return (
                   <option key={c.id} value={c.id} disabled={llena}>
-                    {c.correo} · {etiquetaEstado(c.estado)} · {c.ocupados ?? 0}/{c.max_puestos ?? 5}
-                    {llena ? ' (llena)' : ''}
+                    {etiquetaOpcionCuenta(c)}
                   </option>
                 )
               })}

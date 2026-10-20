@@ -37,6 +37,9 @@ function estadoBadge(estado) {
 const thFilterClass =
   'mt-1.5 w-full max-w-[9.5rem] rounded-md border border-gray-700 bg-gray-800 px-1.5 py-1 text-[11px] font-medium normal-case tracking-normal text-gray-200'
 
+const filtroMovilClass =
+  'w-full rounded-md border border-gray-700 bg-gray-800 px-2 py-2 text-sm font-medium text-gray-200'
+
 function ThCol({ label, campo, sort, onSort, children }) {
   const active = sort.campo === campo
   return (
@@ -55,6 +58,76 @@ function ThCol({ label, campo, sort, onSort, children }) {
       </button>
       {children}
     </th>
+  )
+}
+
+function FiltrosBar({
+  sort,
+  setSort,
+  filtroProveedor,
+  setFiltroProveedor,
+  proveedoresTabla,
+  filtroEstado,
+  setFiltroEstado,
+  filtroCorte,
+  setFiltroCorte,
+}) {
+  const sortValue = sort.campo ? `${sort.campo}:${sort.dir}` : ''
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-3 lg:hidden border-b border-gray-700">
+      <select
+        aria-label="Ordenar"
+        value={sortValue}
+        onChange={(e) => {
+          if (!e.target.value) {
+            setSort({ campo: '', dir: 'asc' })
+            return
+          }
+          const [campo, dir] = e.target.value.split(':')
+          setSort({ campo, dir })
+        }}
+        className={filtroMovilClass}
+      >
+        <option value="">Orden combo</option>
+        <option value="correo:asc">Correo A-Z</option>
+        <option value="correo:desc">Correo Z-A</option>
+        <option value="vence:asc">Vence más próximo</option>
+        <option value="vence:desc">Vence más lejano</option>
+        <option value="estado:asc">Disponible primero</option>
+        <option value="estado:desc">Llena primero</option>
+      </select>
+      <select
+        aria-label="Filtrar proveedor"
+        value={filtroProveedor}
+        onChange={(e) => setFiltroProveedor(e.target.value)}
+        className={filtroMovilClass}
+      >
+        <option value="">Proveedor: todos</option>
+        {proveedoresTabla.map((nombre) => (
+          <option key={nombre} value={nombre}>{nombre}</option>
+        ))}
+      </select>
+      <select
+        aria-label="Filtrar estado"
+        value={filtroEstado}
+        onChange={(e) => setFiltroEstado(e.target.value)}
+        className={filtroMovilClass}
+      >
+        <option value="">Estado: todos</option>
+        <option value="disponible">Disponible</option>
+        <option value="llena">Llena</option>
+      </select>
+      <select
+        aria-label="Filtrar corte"
+        value={filtroCorte}
+        onChange={(e) => setFiltroCorte(e.target.value)}
+        className={filtroMovilClass}
+      >
+        <option value="">Puestos: todos</option>
+        <option value="por_cortar">Por cortar</option>
+        <option value="cortado">Cortado</option>
+      </select>
+    </div>
   )
 }
 
@@ -438,6 +511,17 @@ export default function CuentasPage() {
     filtroCorte,
     setFiltroCorte,
   }
+  const propsFiltrosBar = {
+    sort,
+    setSort,
+    filtroProveedor,
+    setFiltroProveedor,
+    proveedoresTabla,
+    filtroEstado,
+    setFiltroEstado,
+    filtroCorte,
+    setFiltroCorte,
+  }
 
   const filasPorSeccion = useMemo(
     () =>
@@ -551,18 +635,26 @@ export default function CuentasPage() {
               <div className="px-4 py-3 border-b border-gray-700 flex items-center justify-between bg-gray-900/40">
                 <p className="text-sm text-white font-semibold">{plataformaNombre}</p>
               </div>
-              <table className="w-full text-sm text-left">
-                <EncabezadoTabla {...propsEncabezado} />
-                <tbody>
-                  <tr>
-                    <td colSpan={colSpan} className="px-3 py-10 text-center text-gray-400">
-                      {hayFiltroColumna
-                        ? 'Ninguna cuenta coincide con ese filtro. Cambia el filtro de la columna para volver a verlas.'
-                        : `No hay cuentas para ${plataformaNombre}`}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+              <FiltrosBar {...propsFiltrosBar} />
+              <div className="hidden lg:block">
+                <table className="w-full text-sm text-left">
+                  <EncabezadoTabla {...propsEncabezado} />
+                  <tbody>
+                    <tr>
+                      <td colSpan={colSpan} className="px-3 py-10 text-center text-gray-400">
+                        {hayFiltroColumna
+                          ? 'Ninguna cuenta coincide con ese filtro. Cambia el filtro de la columna para volver a verlas.'
+                          : `No hay cuentas para ${plataformaNombre}`}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p className="lg:hidden px-3 py-10 text-center text-gray-400">
+                {hayFiltroColumna
+                  ? 'Ninguna cuenta coincide con ese filtro. Cambia el filtro para volver a verlas.'
+                  : `No hay cuentas para ${plataformaNombre}`}
+              </p>
             </div>
           ) : filasPorSeccion.map((seccion) => (
             <div key={seccion.id} className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
@@ -572,7 +664,35 @@ export default function CuentasPage() {
                   {seccion.filas.length} cuenta{seccion.filas.length === 1 ? '' : 's'}
                 </span>
               </div>
-              <div>
+              <FiltrosBar {...propsFiltrosBar} />
+              <div className="lg:hidden divide-y divide-gray-700">
+                {seccion.filas.map(({ cuenta, puestos, expanded }) => (
+                  <CuentaCard
+                    key={cuenta.id}
+                    cuenta={cuenta}
+                    puestos={puestos}
+                    expanded={expanded}
+                    cuentas={cuentas}
+                    clienteId={clienteId}
+                    onToggle={toggleExpand}
+                    onAsignar={abrirAsignar}
+                    onEditarCuenta={abrirEditarCuenta}
+                    onEditarPuesto={abrirEditarPuesto}
+                    onQuitar={handleQuitar}
+                    onEliminarCuenta={setCuentaAEliminar}
+                    onCortar={setPuestoACortar}
+                    onBorrarDefinitivo={borrarDefinitivo}
+                    seleccionada={
+                      cuentaEditando?.id === cuenta.id
+                      || puestoCuenta?.id === cuenta.id
+                      || cuentaAEliminar?.id === cuenta.id
+                      || searchParams.get('cuenta') === cuenta.id
+                    }
+                    puestoSeleccionadoId={puestoEditando?.id || quitar?.puesto?.id}
+                  />
+                ))}
+              </div>
+              <div className="hidden lg:block overflow-x-auto">
                 <table className="w-full text-sm text-left">
                   <EncabezadoTabla {...propsEncabezado} />
                   <tbody className="divide-y divide-gray-700">
@@ -670,6 +790,202 @@ export default function CuentasPage() {
     </div>
   )
 }
+
+function AccionesPuesto({
+  cuenta,
+  puesto,
+  recordatorio,
+  onCortar,
+  onEditarPuesto,
+  onQuitar,
+  onBorrarDefinitivo,
+}) {
+  if (recordatorio) {
+    return (
+      <Button
+        size="sm"
+        variant="danger"
+        onClick={() => onBorrarDefinitivo(cuenta, puesto)}
+        title="Ya lo quitaste del perfil: borrar recordatorio"
+        className="w-full sm:w-auto"
+      >
+        <Trash2 className="h-3.5 w-3.5" />
+        Borrar de esta cuenta
+      </Button>
+    )
+  }
+  return (
+    <div className="inline-flex items-center justify-end gap-1">
+      <button
+        type="button"
+        onClick={() => onCortar({ cuenta, puesto })}
+        className="p-1.5 rounded-lg text-red-400 hover:text-red-300 hover:bg-red-400/10"
+        title="Marcar para quitar del perfil"
+      >
+        <Scissors className="h-4 w-4" />
+      </button>
+      <button
+        type="button"
+        onClick={() => onEditarPuesto(cuenta, puesto)}
+        className="p-1.5 text-gray-400 hover:text-indigo-400 hover:bg-indigo-400/10 rounded-lg"
+        title="Editar PIN, precio, vencimiento y notas"
+      >
+        <Pencil className="h-4 w-4" />
+      </button>
+      <button
+        type="button"
+        onClick={() => onQuitar(cuenta, puesto)}
+        className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg"
+        title="Quitar de la cuenta"
+      >
+        <Trash2 className="h-4 w-4" />
+      </button>
+    </div>
+  )
+}
+
+const CuentaCard = memo(function CuentaCard({
+  cuenta,
+  puestos,
+  expanded,
+  cuentas,
+  clienteId,
+  onToggle,
+  onAsignar,
+  onEditarCuenta,
+  onEditarPuesto,
+  onQuitar,
+  onEliminarCuenta,
+  onCortar,
+  onBorrarDefinitivo,
+  seleccionada,
+  puestoSeleccionadoId,
+}) {
+  const llena = cuentaLlena(cuenta)
+  const estado = etiquetaEstado(cuenta.estado)
+
+  return (
+    <div className={claseFila(seleccionada, 'p-3 space-y-3')}>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <p className="text-white font-medium break-all">{cuenta.correo}</p>
+            {cuenta.correo ? (
+              <button
+                type="button"
+                className="p-1 text-gray-500 hover:text-white rounded"
+                title="Copiar correo"
+                onClick={() => navigator.clipboard.writeText(cuenta.correo)}
+              >
+                <Copy className="h-3.5 w-3.5" />
+              </button>
+            ) : null}
+            <CorteBadges puestos={puestos} />
+          </div>
+          <p className="text-sm text-gray-400 mt-1 break-all">
+            {cuenta.contrasena || 'Sin contraseña'}
+            {cuenta.contrasena ? (
+              <button
+                type="button"
+                className="ml-1 p-1 text-gray-500 hover:text-white rounded align-middle"
+                title="Copiar contraseña"
+                onClick={() => navigator.clipboard.writeText(cuenta.contrasena)}
+              >
+                <Copy className="h-3.5 w-3.5 inline" />
+              </button>
+            ) : null}
+          </p>
+        </div>
+        <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium border shrink-0 ${estadoBadge(estado)}`}>
+          {estado}
+        </span>
+      </div>
+      <div className="text-xs text-gray-400 space-y-1">
+        <p>Vence: <FechaBadge fecha={cuenta.fecha_vencimiento} empty="Sin fecha" /></p>
+        <p>
+          {cuenta.proveedor?.nombre_prov || 'Sin proveedor'}
+          {' · '}
+          {cuenta.precio_costo != null ? `$${cuenta.precio_costo}` : 'Sin costo'}
+          {' · '}
+          {cuenta.ocupados ?? puestos.length}/{cuenta.max_puestos ?? 5} puestos
+        </p>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" variant="secondary" onClick={() => onEditarCuenta(cuenta)} title="Editar">
+          <Pencil className="h-3.5 w-3.5" />
+          Editar
+        </Button>
+        <Button size="sm" onClick={() => onAsignar(cuenta)} disabled={llena} title={llena ? 'Llena' : 'Asignar'}>
+          <UserPlus className="h-3.5 w-3.5" />
+          {llena ? 'Llena' : 'Asignar'}
+        </Button>
+        <Button size="sm" variant="secondary" onClick={() => onToggle(cuenta.id)} title={expanded ? 'Ocultar' : 'Desplegar'}>
+          {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+        </Button>
+        <Button size="sm" variant="danger" onClick={() => onEliminarCuenta(cuenta)} title="Eliminar cuenta">
+          <Trash2 className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+      {expanded ? (
+        puestos.length === 0 ? (
+          <p className="text-sm text-gray-500">Esta cuenta no tiene clientes asignados</p>
+        ) : (
+          <div className="space-y-2">
+            {puestos.map((puesto, index) => {
+              const recordatorio = puestoCortado(puesto)
+              const esFiltro = clienteId && puesto.id_usuario === clienteId
+              const esPuestoSel = puestoSeleccionadoId && puesto.id === puestoSeleccionadoId
+              return (
+                <div
+                  key={puesto.id || index}
+                  className={claseFila(
+                    esPuestoSel,
+                    `rounded-lg border border-gray-700 p-3 space-y-1 ${
+                      recordatorio ? 'bg-red-500/10' : esFiltro ? 'bg-indigo-500/10' : 'bg-gray-900/50'
+                    }`
+                  )}
+                >
+                  <p className="text-white font-medium">
+                    {puesto.usuario?.nombre || 'Sin cliente'}
+                    {esComboPuesto(puesto, cuentas) ? (
+                      <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wide bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                        Combo
+                      </span>
+                    ) : null}
+                    <CorteBadgePuesto puesto={puesto} />
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    {puesto.usuario?.numero_telefono || 'Sin teléfono'}
+                    {' · PIN '}
+                    {puesto.pin || '—'}
+                    {' · '}
+                    {puesto.valor_venta != null ? `$${puesto.valor_venta}` : 'Sin venta'}
+                  </p>
+                  <FechaBadge fecha={puesto.vencimiento_usuario} />
+                  {puesto.notas ? <p className="text-xs text-gray-500">{puesto.notas}</p> : null}
+                  {recordatorio ? (
+                    <p className="text-[11px] text-red-300">
+                      Recuerda quitarlo de {cuenta.correo} y luego bórralo de aquí
+                    </p>
+                  ) : null}
+                  <AccionesPuesto
+                    cuenta={cuenta}
+                    puesto={puesto}
+                    recordatorio={recordatorio}
+                    onCortar={onCortar}
+                    onEditarPuesto={onEditarPuesto}
+                    onQuitar={onQuitar}
+                    onBorrarDefinitivo={onBorrarDefinitivo}
+                  />
+                </div>
+              )
+            })}
+          </div>
+        )
+      ) : null}
+    </div>
+  )
+})
 
 const FragmentRow = memo(function FragmentRow({
   cuenta,
@@ -837,46 +1153,15 @@ const FragmentRow = memo(function FragmentRow({
                             {puesto.notas || '—'}
                           </td>
                           <td className="px-3 py-2 text-right">
-                            <div className="inline-flex items-center justify-end gap-1">
-                              {!recordatorio ? (
-                                <>
-                                  <button
-                                    type="button"
-                                    onClick={() => onCortar({ cuenta, puesto })}
-                                    className="p-1.5 rounded-lg text-red-400 hover:text-red-300 hover:bg-red-400/10"
-                                    title="Marcar para quitar del perfil"
-                                  >
-                                    <Scissors className="h-4 w-4" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => onEditarPuesto(cuenta, puesto)}
-                                    className="p-1.5 text-gray-400 hover:text-indigo-400 hover:bg-indigo-400/10 rounded-lg"
-                                    title="Editar PIN, precio, vencimiento y notas"
-                                  >
-                                    <Pencil className="h-4 w-4" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => onQuitar(cuenta, puesto)}
-                                    className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg"
-                                    title="Quitar de la cuenta"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </button>
-                                </>
-                              ) : (
-                                <Button
-                                  size="sm"
-                                  variant="danger"
-                                  onClick={() => onBorrarDefinitivo(cuenta, puesto)}
-                                  title="Ya lo quitaste del perfil: borrar recordatorio"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                  Borrar de esta cuenta
-                                </Button>
-                              )}
-                            </div>
+                            <AccionesPuesto
+                              cuenta={cuenta}
+                              puesto={puesto}
+                              recordatorio={recordatorio}
+                              onCortar={onCortar}
+                              onEditarPuesto={onEditarPuesto}
+                              onQuitar={onQuitar}
+                              onBorrarDefinitivo={onBorrarDefinitivo}
+                            />
                           </td>
                         </tr>
                       )

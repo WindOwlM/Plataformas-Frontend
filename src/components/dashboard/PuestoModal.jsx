@@ -7,7 +7,7 @@ import Button from '../ui/Button'
 import Modal from '../ui/Modal'
 import { fieldClass } from '../ui/fieldStyles'
 import ClienteQuickCreate from './ClienteQuickCreate'
-import { cuentaLlena } from '../../lib/cuentaEstado'
+import { cuentaLlena, etiquetaOpcionCuenta, ordenarCuentasPorCupo } from '../../lib/cuentaEstado'
 
 let extraSeq = 0
 function extraKey() {
@@ -183,7 +183,7 @@ export default function PuestoModal({
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <InputField
             id="pin"
             label="PIN / Clave"
@@ -243,7 +243,7 @@ export default function PuestoModal({
               Elige otras plataformas. Se copia PIN, fecha y precio; puedes cambiarlos en cada una.
             </p>
             {extras.map((linea, index) => {
-              const opciones = cuentasPorPlat[linea.id_plataforma] || []
+              const opciones = ordenarCuentasPorCupo(cuentasPorPlat[linea.id_plataforma] || [])
               return (
                 <div key={linea.key} className="rounded-lg border border-gray-700 bg-gray-900/50 p-3 space-y-3">
                   <div className="flex items-center justify-between">
@@ -288,8 +288,7 @@ export default function PuestoModal({
                           const llena = cuentaLlena(c)
                           return (
                             <option key={c.id} value={c.id} disabled={llena}>
-                              {c.correo} · {c.ocupados ?? 0}/{c.max_puestos ?? 5}
-                              {llena ? ' (llena)' : ''}
+                              {etiquetaOpcionCuenta(c)}
                             </option>
                           )
                         })}
@@ -339,7 +338,7 @@ export default function PuestoModal({
           </div>
         ) : null}
 
-        <div className="flex gap-3 pt-2">
+        <div className="flex flex-col-reverse sm:flex-row gap-3 pt-2">
           <Button type="button" variant="secondary" onClick={onClose} className="flex-1">
             Cancelar
           </Button>

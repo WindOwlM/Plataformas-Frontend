@@ -5,7 +5,7 @@ import Button from '../ui/Button'
 import Modal from '../ui/Modal'
 import { fieldClass } from '../ui/fieldStyles'
 import { fechaHoy, formatFecha, sumarDias } from '../../lib/vencimientos'
-import { cuentaLlena } from '../../lib/cuentaEstado'
+import { cuentaLlena, etiquetaOpcionCuenta, ordenarCuentasPorCupo } from '../../lib/cuentaEstado'
 
 let lineaSeq = 0
 function nuevaKey() {
@@ -171,6 +171,7 @@ export default function RenovarModal({ isOpen, item, onClose, onSaved }) {
           tipo: item.tipo,
           id_cuenta: item.id_cuenta || null,
           id_puesto: item.id_puesto || null,
+          id_por_ubicar: item.id_por_ubicar || null,
           renovaciones: item.renovaciones || [],
         }),
       })
@@ -214,7 +215,9 @@ export default function RenovarModal({ isOpen, item, onClose, onSaved }) {
 
   const subtitle = item?.tipo === 'combo'
     ? `${item.nombre} · ${(item.plataformas || []).join(' · ')}`
-    : item?.nombre
+    : item?.tipo === 'por_ubicar'
+      ? `${item.nombre} · Por ubicar`
+      : item?.nombre
 
   return (
     <Modal
@@ -277,7 +280,10 @@ export default function RenovarModal({ isOpen, item, onClose, onSaved }) {
                   </Button>
                 </div>
                 {lineas.map((linea, index) => {
-                  const opciones = [...(cuentasPorPlat[linea.id_plataforma] || [])]
+                  const opciones = ordenarCuentasPorCupo(
+                    [...(cuentasPorPlat[linea.id_plataforma] || [])],
+                    linea.id_cuenta
+                  )
                   if (
                     linea.id_cuenta &&
                     !opciones.some((cuenta) => cuenta.id === linea.id_cuenta)
@@ -354,8 +360,8 @@ export default function RenovarModal({ isOpen, item, onClose, onSaved }) {
                                   value={cuenta.id}
                                   disabled={llena || ocupadaOtra}
                                 >
-                                  {cuenta.correo} · {cuenta.ocupados ?? 0}/{cuenta.max_puestos ?? 5}
-                                  {llena ? ' (llena)' : ''}
+                                  {etiquetaOpcionCuenta(cuenta)}
+                                  {ocupadaOtra ? ' (ya elegida)' : ''}
                                 </option>
                               )
                             })}
@@ -407,7 +413,7 @@ export default function RenovarModal({ isOpen, item, onClose, onSaved }) {
 
         {errorLocal ? <p className="text-sm text-red-400">{errorLocal}</p> : null}
 
-        <div className="flex gap-3 pt-1">
+        <div className="flex flex-col-reverse sm:flex-row gap-3 pt-1">
           <Button type="button" variant="secondary" onClick={onClose} className="flex-1">
             Cancelar
           </Button>

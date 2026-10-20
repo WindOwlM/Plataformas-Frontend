@@ -13,15 +13,18 @@ const tipoBadge = {
   combo: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40',
   usuario: 'bg-green-500/20 text-green-400 border-green-500/30',
   cuenta: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+  por_ubicar: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40',
 }
 
 const tipoLabel = {
   combo: 'Combo',
   usuario: 'Cliente',
   cuenta: 'Cuenta',
+  por_ubicar: 'Por ubicar',
 }
 
 function rutaCuenta(item) {
+  if (item?.tipo === 'por_ubicar') return '/dashboard/por-ubicar'
   const params = new URLSearchParams()
   const fila = item?.tipo === 'combo'
     ? (item.asignaciones?.[0] || item.renovaciones?.[0] || {})
@@ -80,9 +83,11 @@ const ItemRow = memo(function ItemRow({ item, onRenovar, onVerCuenta, selecciona
         <p className="text-sm text-gray-400 truncate">
           {esCombo
             ? plataformas
-            : item.tipo === 'usuario'
-              ? `${item.correo}${item.plataforma ? ` · ${item.plataforma}` : ''}${item.telefono ? ` · ${item.telefono}` : ''}`
-              : item.plataforma}
+            : item.tipo === 'por_ubicar'
+              ? `${item.plataforma || ''}${item.correo ? ` · última: ${item.correo}` : ''}${item.telefono ? ` · ${item.telefono}` : ''}`
+              : item.tipo === 'usuario'
+                ? `${item.correo}${item.plataforma ? ` · ${item.plataforma}` : ''}${item.telefono ? ` · ${item.telefono}` : ''}`
+                : item.plataforma}
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-2 shrink-0">
@@ -103,7 +108,12 @@ const ItemRow = memo(function ItemRow({ item, onRenovar, onVerCuenta, selecciona
             {copiado ? 'Copiado' : 'Copiar mensaje'}
           </Button>
         ) : null}
-        {esVencida ? (
+        {item.tipo === 'por_ubicar' ? (
+          <Button size="sm" variant="secondary" onClick={() => onVerCuenta(item)}>
+            <ExternalLink className="h-3.5 w-3.5" />
+            Por ubicar
+          </Button>
+        ) : esVencida ? (
           <Button size="sm" variant="secondary" onClick={() => onVerCuenta(item)}>
             <ExternalLink className="h-3.5 w-3.5" />
             Ver cuenta
