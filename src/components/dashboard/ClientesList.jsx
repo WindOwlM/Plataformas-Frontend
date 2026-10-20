@@ -1,12 +1,14 @@
 import { useState, useEffect, useMemo } from 'react'
-import { ChevronDown, ChevronRight, Pencil, Plus, Users } from 'lucide-react'
+import { CalendarClock, ChevronDown, ChevronRight, Pencil, Plus, Users } from 'lucide-react'
 import { useApi } from '../../hooks/useApi'
 import ClienteModal from './ClienteModal'
+import RenovarClienteModal from './RenovarClienteModal'
 import Button from '../ui/Button'
 import { fieldClass } from '../ui/fieldStyles'
 import FechaBadge from '../ui/FechaBadge'
 import { CorteBadgePuesto } from '../ui/CorteBadges'
 import { claseFila } from '../../lib/filaSeleccion'
+import { puestoCortado } from '../../lib/vencimientos'
 
 export default function ClientesList() {
   const [clientes, setClientes] = useState([])
@@ -14,6 +16,7 @@ export default function ClientesList() {
   const [expandedIds, setExpandedIds] = useState(() => new Set())
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [clienteEditando, setClienteEditando] = useState(null)
+  const [clienteRenovar, setClienteRenovar] = useState(null)
   const { request, loading } = useApi()
 
   useEffect(() => {
@@ -126,10 +129,14 @@ export default function ClientesList() {
           ) : (
             filtrados.map((cliente) => {
               const cuentas = (cliente.usuario_cuenta || []).filter((p) => p.cuenta)
+              const activas = cuentas.filter((p) => !puestoCortado(p))
               const expanded = expandedIds.has(cliente.id)
+              const seleccionada =
+                (isModalOpen && clienteEditando?.id === cliente.id)
+                || clienteRenovar?.id === cliente.id
               return (
                 <div key={cliente.id}>
-                  <div className={claseFila(isModalOpen && clienteEditando?.id === cliente.id, 'px-4 py-3.5 flex items-center justify-between hover:bg-gray-700/50 transition-colors gap-3')}>
+                  <div className={claseFila(seleccionada, 'px-4 py-3.5 flex items-center justify-between hover:bg-gray-700/50 transition-colors gap-3')}>
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="h-10 w-10 shrink-0 bg-indigo-600/20 rounded-full flex items-center justify-center">
                         <span className="text-sm font-medium text-indigo-300">
@@ -146,6 +153,16 @@ export default function ClientesList() {
                       </div>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        disabled={activas.length === 0}
+                        onClick={() => setClienteRenovar(cliente)}
+                        title={activas.length === 0 ? 'No tiene cuentas activas' : 'Renovar cuentas'}
+                      >
+                        <CalendarClock className="h-3.5 w-3.5" />
+                        Renovar
+                      </Button>
                       <Button size="sm" variant="secondary" onClick={() => toggleExpand(cliente.id)}>
                         {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
                         {expanded ? 'Ocultar' : 'Desplegar'}
@@ -222,6 +239,16 @@ export default function ClientesList() {
         onClose={handleCloseModal}
         onSubmit={handleSubmit}
         cliente={clienteEditando}
+      />
+
+      <RenovarClienteModal
+        isOpen={!!clienteRenovar}
+        cliente={clienteRenovar}
+        onClose={() => setClienteRenovar(null)}
+        onSaved={async () => {
+          setClienteRenovar(null)
+          await cargarClientes()
+        }}
       />
     </div>
   )
