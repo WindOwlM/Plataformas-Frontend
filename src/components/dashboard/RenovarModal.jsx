@@ -13,48 +13,104 @@ function nuevaKey() {
   return `linea-${Date.now()}-${lineaSeq}`
 }
 
-function lineaDesdeAsignacion(asig, fechaDefault) {
+function lineaDesdeAsignacion(asig) {
+  const actual = asig.fecha || ''
   return {
     key: nuevaKey(),
     id_puesto: asig.id_puesto || null,
     id_cuenta: asig.id_cuenta || '',
     id_plataforma: asig.id_plataforma || '',
+    id_por_ubicar: asig.id_por_ubicar || null,
     plataformaNombre: asig.plataforma || '',
     pin: asig.pin || '',
     valor_venta: asig.valor ?? asig.valor_venta ?? '',
-    vencimiento_usuario: fechaDefault,
+    fechaActual: actual,
+    vencimiento_usuario: actual ? sumarDias(actual, 30) : sumarDias(fechaHoy(), 30),
     correo: asig.correo || '',
   }
 }
 
-function lineasIniciales(item, fechaDefault) {
+function lineasIniciales(item) {
   if (item?.tipo === 'combo' && item.asignaciones?.length) {
-    return item.asignaciones.map((asig) =>
-      lineaDesdeAsignacion(asig, sumarDias(asig.fecha || item.fecha, 30))
-    )
+    return item.asignaciones.map((asig) => lineaDesdeAsignacion(asig))
   }
   if (item?.tipo === 'usuario') {
     return [
-      lineaDesdeAsignacion(
-        {
-          id_puesto: item.id_puesto,
-          id_cuenta: item.id_cuenta,
-          id_plataforma: item.id_plataforma,
-          plataforma: item.plataforma,
-          pin: item.pin,
-          valor: item.valor,
-          correo: item.correo,
-        },
-        fechaDefault
-      ),
+      lineaDesdeAsignacion({
+        id_puesto: item.id_puesto,
+        id_cuenta: item.id_cuenta,
+        id_plataforma: item.id_plataforma,
+        plataforma: item.plataforma,
+        pin: item.pin,
+        valor: item.valor,
+        correo: item.correo,
+        fecha: item.fecha,
+      }),
+    ]
+  }
+  if (item?.tipo === 'por_ubicar') {
+    return [
+      lineaDesdeAsignacion({
+        id_por_ubicar: item.id_por_ubicar,
+        id_plataforma: item.id_plataforma,
+        plataforma: item.plataforma,
+        pin: item.pin,
+        valor: item.valor,
+        correo: item.correo,
+        fecha: item.fecha,
+      }),
+    ]
+  }
+  if (item?.tipo === 'cuenta') {
+    return [
+      lineaDesdeAsignacion({
+        id_cuenta: item.id_cuenta,
+        id_plataforma: item.id_plataforma,
+        plataforma: item.plataforma,
+        correo: item.correo,
+        fecha: item.fecha,
+      }),
     ]
   }
   return []
 }
 
+function FechaConAtajos({ value, onChange, actual }) {
+  return (
+    <div>
+      {actual ? (
+        <p className="text-xs text-gray-500 mb-1">Actual: {formatFecha(actual)}</p>
+      ) : null}
+      <input
+        type="date"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={fieldClass}
+      />
+      <div className="flex flex-wrap gap-2 mt-2">
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          onClick={() => onChange(sumarDias(value || actual, 30))}
+        >
+          +30 días
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          onClick={() => onChange(sumarDias(fechaHoy(), 30))}
+        >
+          Hoy +30
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 export default function RenovarModal({ isOpen, item, onClose, onSaved }) {
   const { request } = useApi()
-  const [nuevaFecha, setNuevaFecha] = useState('')
   const [editarPlataformas, setEditarPlataformas] = useState(false)
   const [lineas, setLineas] = useState([])
   const [plataformas, setPlataformas] = useState([])
@@ -75,10 +131,8 @@ export default function RenovarModal({ isOpen, item, onClose, onSaved }) {
 
   useEffect(() => {
     if (!isOpen || !item) return
-    const fecha = sumarDias(item.fecha, 30)
-    setNuevaFecha(fecha)
     setEditarPlataformas(false)
-    setLineas(lineasIniciales(item, fecha))
+    setLineas(lineasIniciales(item))
     setCuentasPorPlat({})
     cuentasCargadas.current = new Set()
     setErrorLocal('')
@@ -120,11 +174,6 @@ export default function RenovarModal({ isOpen, item, onClose, onSaved }) {
     })
   }, [isOpen, editarPlataformas, lineas, cargarCuentasPlat])
 
-  function aplicarFecha(fecha) {
-    setNuevaFecha(fecha)
-    setLineas((prev) => prev.map((l) => ({ ...l, vencimiento_usuario: fecha })))
-  }
-
   function actualizarLinea(key, patch) {
     setLineas((prev) => prev.map((l) => (l.key === key ? { ...l, ...patch } : l)))
   }
@@ -148,7 +197,7 @@ export default function RenovarModal({ isOpen, item, onClose, onSaved }) {
         id_plataforma: '',
         pin: '',
         valor_venta: '',
-        vencimiento_usuario: nuevaFecha,
+        vencimiento_usuario: sumarDias(fechaHoy(), 30),
         correo: '',
       },
     ])
@@ -159,20 +208,31 @@ export default function RenovarModal({ isOpen, item, onClose, onSaved }) {
   }
 
   async function guardar() {
-    if (!item || !nuevaFecha) return
+    if (!item) return
+    const incompletaFecha = lineas.find((l) => !l.vencimiento_usuario)
+    if (incompletaFecha) {
+      setErrorLocal('Cada cuenta debe tener una fecha.')
+      return
+    }
     setErrorLocal('')
     setGuardando(true)
 
-    if (esCuenta || !editarPlataformas) {
+    if (esCuenta || item.tipo === 'por_ubicar' || !editarPlataformas) {
+      const fechaPrincipal = lineas[0]?.vencimiento_usuario
+      const tipoGuardar = item.tipo === 'combo' || lineas.length > 1 ? 'combo' : item.tipo
       const { error } = await request('/cuentas/vencimientos/fecha', {
         method: 'PATCH',
         body: JSON.stringify({
-          fecha: nuevaFecha,
-          tipo: item.tipo,
-          id_cuenta: item.id_cuenta || null,
-          id_puesto: item.id_puesto || null,
-          id_por_ubicar: item.id_por_ubicar || null,
-          renovaciones: item.renovaciones || [],
+          fecha: fechaPrincipal,
+          tipo: tipoGuardar,
+          id_cuenta: item.id_cuenta || lineas[0]?.id_cuenta || null,
+          id_puesto: item.id_puesto || lineas[0]?.id_puesto || null,
+          id_por_ubicar: item.id_por_ubicar || lineas[0]?.id_por_ubicar || null,
+          renovaciones: lineas.map((l) => ({
+            id_puesto: l.id_puesto,
+            id_cuenta: l.id_cuenta,
+            fecha: l.vencimiento_usuario,
+          })),
         }),
       })
       setGuardando(false)
@@ -225,51 +285,36 @@ export default function RenovarModal({ isOpen, item, onClose, onSaved }) {
       onClose={onClose}
       title="Renovar"
       subtitle={subtitle}
-      maxWidth={editarPlataformas ? 'max-w-3xl' : 'max-w-md'}
+      maxWidth={editarPlataformas ? 'max-w-3xl' : 'max-w-lg'}
     >
       <div className="space-y-4">
-        <p className="text-sm text-gray-400">
-          Fecha actual: {formatFecha(item?.fecha)}
-          {item?.tipo === 'combo' && !editarPlataformas
-            ? '. Se aplica a las plataformas de este combo que vencen en este grupo.'
-            : ''}
-        </p>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">Nueva fecha</label>
-          <input
-            type="date"
-            value={nuevaFecha}
-            onChange={(e) => aplicarFecha(e.target.value)}
-            className={fieldClass}
-          />
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            onClick={() => aplicarFecha(sumarDias(nuevaFecha || item?.fecha, 30))}
-          >
-            +30 días
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            onClick={() => aplicarFecha(sumarDias(fechaHoy(), 30))}
-          >
-            Hoy +30
-          </Button>
-        </div>
-
-        {puedeEditarPlataformas && (
-          <div className="pt-1">
-            {!editarPlataformas ? (
+        {!editarPlataformas ? (
+          <div className="space-y-3">
+            {lineas.map((linea) => (
+              <div key={linea.key} className="rounded-xl border border-gray-700 bg-gray-900/40 p-3 space-y-2">
+                <div>
+                  <p className="text-sm text-white font-medium">
+                    {linea.plataformaNombre || item?.plataforma || 'Cuenta'}
+                  </p>
+                  {linea.correo ? (
+                    <p className="text-xs text-gray-400 truncate">{linea.correo}</p>
+                  ) : null}
+                </div>
+                <label className="block text-sm font-medium text-gray-300">Nueva fecha</label>
+                <FechaConAtajos
+                  value={linea.vencimiento_usuario}
+                  actual={linea.fechaActual}
+                  onChange={(fecha) => actualizarLinea(linea.key, { vencimiento_usuario: fecha })}
+                />
+              </div>
+            ))}
+            {puedeEditarPlataformas ? (
               <Button type="button" size="sm" variant="secondary" onClick={() => setEditarPlataformas(true)}>
                 Editar plataformas
               </Button>
-            ) : (
+            ) : null}
+          </div>
+        ) : (
               <div className="space-y-3">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-sm text-gray-300">
@@ -389,13 +434,10 @@ export default function RenovarModal({ isOpen, item, onClose, onSaved }) {
                         </div>
                         <div className="sm:col-span-2">
                           <label className="block text-sm font-medium text-gray-300 mb-2">Vencimiento</label>
-                          <input
-                            type="date"
+                          <FechaConAtajos
                             value={linea.vencimiento_usuario}
-                            onChange={(e) =>
-                              actualizarLinea(linea.key, { vencimiento_usuario: e.target.value })
-                            }
-                            className={fieldClass}
+                            actual={linea.fechaActual}
+                            onChange={(fecha) => actualizarLinea(linea.key, { vencimiento_usuario: fecha })}
                           />
                         </div>
                       </div>
@@ -407,8 +449,6 @@ export default function RenovarModal({ isOpen, item, onClose, onSaved }) {
                   Agregar plataforma
                 </Button>
               </div>
-            )}
-          </div>
         )}
 
         {errorLocal ? <p className="text-sm text-red-400">{errorLocal}</p> : null}

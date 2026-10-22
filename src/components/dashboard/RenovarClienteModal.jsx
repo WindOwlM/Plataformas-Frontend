@@ -13,7 +13,6 @@ function fechaKey(value) {
 export default function RenovarClienteModal({ isOpen, onClose, onSaved, cliente }) {
   const { request } = useApi()
   const [lineas, setLineas] = useState([])
-  const [fechaGlobal, setFechaGlobal] = useState('')
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
 
@@ -34,14 +33,8 @@ export default function RenovarClienteModal({ isOpen, onClose, onSaved, cliente 
       }
     })
     setLineas(filas)
-    setFechaGlobal(filas[0]?.fechaNueva || sumarDias(fechaHoy(), 30))
     setError('')
   }, [isOpen, cliente])
-
-  function aplicarASeleccionadas(fecha) {
-    setFechaGlobal(fecha)
-    setLineas((prev) => prev.map((l) => (l.incluida ? { ...l, fechaNueva: fecha } : l)))
-  }
 
   const seleccionadas = lineas.filter((l) => l.incluida)
 
@@ -60,7 +53,7 @@ export default function RenovarClienteModal({ isOpen, onClose, onSaved, cliente 
     const { error: err } = await request('/cuentas/vencimientos/fecha', {
       method: 'PATCH',
       body: JSON.stringify({
-        fecha: fechaGlobal || seleccionadas[0].fechaNueva,
+        fecha: seleccionadas[0].fechaNueva,
         tipo: 'combo',
         renovaciones: seleccionadas.map((l) => ({
           id_puesto: l.id_puesto,
@@ -94,43 +87,15 @@ export default function RenovarClienteModal({ isOpen, onClose, onSaved, cliente 
               Confirma cuáles cuentas renovar y la fecha de cada una. Por defecto se suma +30 días a la fecha actual.
             </p>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Fecha para las seleccionadas</label>
-              <input
-                type="date"
-                value={fechaGlobal}
-                onChange={(e) => aplicarASeleccionadas(e.target.value)}
-                className={fieldClass}
-              />
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                size="sm"
-                variant="secondary"
-                onClick={() => aplicarASeleccionadas(sumarDias(fechaGlobal || fechaHoy(), 30))}
-              >
-                +30 días
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="secondary"
-                onClick={() => aplicarASeleccionadas(sumarDias(fechaHoy(), 30))}
-              >
-                Hoy +30
-              </Button>
-            </div>
-
             <div className="rounded-xl border border-gray-700 divide-y divide-gray-700 overflow-hidden">
               {lineas.map((linea) => (
                 <label
                   key={linea.id_puesto}
-                  className={`flex flex-col sm:flex-row sm:items-center gap-2 px-3 py-3 cursor-pointer ${
+                  className={`flex flex-col gap-2 px-3 py-3 cursor-pointer ${
                     linea.incluida ? 'bg-gray-900/40' : 'bg-gray-900/10 opacity-60'
                   }`}
                 >
-                  <div className="flex items-start gap-2 min-w-0 flex-1">
+                  <div className="flex items-start gap-2 min-w-0">
                     <input
                       type="checkbox"
                       checked={linea.incluida}
@@ -149,21 +114,58 @@ export default function RenovarClienteModal({ isOpen, onClose, onSaved, cliente 
                       <p className="text-xs text-gray-500">Actual: {formatFecha(linea.fechaActual)}</p>
                     </div>
                   </div>
-                  <div className="sm:w-40">
-                    <input
-                      type="date"
-                      value={linea.fechaNueva}
-                      disabled={!linea.incluida}
-                      onChange={(e) =>
-                        setLineas((prev) =>
-                          prev.map((l) =>
-                            l.id_puesto === linea.id_puesto ? { ...l, fechaNueva: e.target.value } : l
+                  {linea.incluida ? (
+                    <div>
+                      <input
+                        type="date"
+                        value={linea.fechaNueva}
+                        onChange={(e) =>
+                          setLineas((prev) =>
+                            prev.map((l) =>
+                              l.id_puesto === linea.id_puesto ? { ...l, fechaNueva: e.target.value } : l
+                            )
                           )
-                        )
-                      }
-                      className={fieldClass}
-                    />
-                  </div>
+                        }
+                        className={fieldClass}
+                      />
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="secondary"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            setLineas((prev) =>
+                              prev.map((l) =>
+                                l.id_puesto === linea.id_puesto
+                                  ? { ...l, fechaNueva: sumarDias(l.fechaNueva || l.fechaActual, 30) }
+                                  : l
+                              )
+                            )
+                          }}
+                        >
+                          +30 días
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="secondary"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            setLineas((prev) =>
+                              prev.map((l) =>
+                                l.id_puesto === linea.id_puesto
+                                  ? { ...l, fechaNueva: sumarDias(fechaHoy(), 30) }
+                                  : l
+                              )
+                            )
+                          }}
+                        >
+                          Hoy +30
+                        </Button>
+                      </div>
+                    </div>
+                  ) : null}
                 </label>
               ))}
             </div>
