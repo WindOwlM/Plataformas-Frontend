@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Loader2, MapPin, Pencil, Trash2 } from 'lucide-react'
 import { useApi } from '../hooks/useApi'
 import Button from '../components/ui/Button'
@@ -8,6 +9,7 @@ import ConfirmModal from '../components/ui/ConfirmModal'
 import FechaBadge from '../components/ui/FechaBadge'
 
 export default function PorUbicarPage() {
+  const navigate = useNavigate()
   const { request, loading } = useApi()
   const [filas, setFilas] = useState([])
   const [reubicar, setReubicar] = useState(null)
@@ -29,6 +31,15 @@ export default function PorUbicarPage() {
       body: JSON.stringify(payload),
     })
     if (result.error) return false
+    const destino = result.data?.cuenta
+    const params = new URLSearchParams()
+    if (destino?.id_plataforma) params.set('plataforma', destino.id_plataforma)
+    if (destino?.correo) params.set('correo', destino.correo)
+    if (destino?.id) params.set('cuenta', destino.id)
+    if (params.toString()) {
+      navigate(`/dashboard/cuentas?${params.toString()}`)
+      return true
+    }
     await cargar()
     return true
   }

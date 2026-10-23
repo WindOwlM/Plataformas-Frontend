@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Plus, Pencil, Truck } from 'lucide-react'
 import { useApi } from '../../hooks/useApi'
-import CatalogModal from './CatalogModal'
+import ProveedorModal from './ProveedorModal'
 import Button from '../ui/Button'
 import { claseFila } from '../../lib/filaSeleccion'
 
@@ -79,7 +79,14 @@ export default function ProveedoresList() {
               key={p.id}
               className={claseFila(isModalOpen && proveedorEditando?.id === p.id, 'px-4 py-3.5 flex items-center justify-between hover:bg-gray-700/50 transition-colors group')}
             >
-              <span className="text-white">{p.nombre_prov}</span>
+              <div className="min-w-0">
+                <span className="text-white">{p.nombre_prov}</span>
+                {Array.isArray(p.celulares) && p.celulares.filter(Boolean).length > 0 ? (
+                  <p className="text-xs text-gray-400 mt-0.5 break-all">
+                    {p.celulares.filter(Boolean).join(' · ')}
+                  </p>
+                ) : null}
+              </div>
               <button
                 type="button"
                 onClick={() => {
@@ -96,16 +103,11 @@ export default function ProveedoresList() {
         )}
       </div>
 
-      <CatalogModal
+      <ProveedorModal
         isOpen={isModalOpen}
         onClose={handleCloseModal}
         onSubmit={handleSubmit}
         item={proveedorEditando}
-        titleNew="Nuevo proveedor"
-        titleEdit="Editar proveedor"
-        label="Nombre"
-        placeholder="Ej: Proveedor Juan, Cuentas Premium..."
-        nameKey="nombre_prov"
       />
     </div>
   )

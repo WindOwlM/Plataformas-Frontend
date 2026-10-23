@@ -89,6 +89,9 @@ const ItemRow = memo(function ItemRow({ item, onRenovar, onVerCuenta, selecciona
                 ? `${item.correo}${item.plataforma ? ` · ${item.plataforma}` : ''}${item.telefono ? ` · ${item.telefono}` : ''}`
                 : item.plataforma}
         </p>
+        {item.notas ? (
+          <p className="text-xs text-amber-200/90 mt-1 whitespace-pre-wrap break-words">{item.notas}</p>
+        ) : null}
       </div>
       <div className="flex flex-wrap items-center gap-2 shrink-0">
         {!esCombo && item.pin ? (
