@@ -82,7 +82,7 @@ const ItemRow = memo(function ItemRow({ item, onRenovar, onVerCuenta, selecciona
         </div>
         <p className="text-sm text-gray-400 truncate">
           {esCombo
-            ? plataformas
+            ? `${plataformas}${item.asignaciones?.length > 1 ? ` · ${item.asignaciones.length} cuentas` : ''}`
             : item.tipo === 'por_ubicar'
               ? `${item.plataforma || ''}${item.correo ? ` · última: ${item.correo}` : ''}${item.telefono ? ` · ${item.telefono}` : ''}`
               : item.tipo === 'usuario'

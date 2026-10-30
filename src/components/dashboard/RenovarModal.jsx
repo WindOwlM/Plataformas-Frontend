@@ -5,7 +5,7 @@ import Button from '../ui/Button'
 import Modal from '../ui/Modal'
 import { fieldClass } from '../ui/fieldStyles'
 import { fechaHoy, formatFecha, sumarDias } from '../../lib/vencimientos'
-import { cuentaLlena, etiquetaOpcionCuenta, ordenarCuentasPorCupo } from '../../lib/cuentaEstado'
+import { cuentaNoAsignable, etiquetaOpcionCuenta, ordenarCuentasPorCupo } from '../../lib/cuentaEstado'
 
 let lineaSeq = 0
 function nuevaKey() {
@@ -397,7 +397,7 @@ export default function RenovarModal({ isOpen, item, onClose, onSaved }) {
                             </option>
                             {opciones.map((cuenta) => {
                               const esActual = cuenta.id === linea.id_cuenta
-                              const llena = cuentaLlena(cuenta) && !esActual
+                              const llena = cuentaNoAsignable(cuenta) && !esActual
                               const ocupadaOtra = actualesIds.has(cuenta.id) && !esActual
                               return (
                                 <option

@@ -4,7 +4,7 @@ import Button from '../ui/Button'
 import InputField from '../ui/InputField'
 import Modal from '../ui/Modal'
 import { fieldClass } from '../ui/fieldStyles'
-import { cuentaLlena, etiquetaOpcionCuenta, ordenarCuentasPorCupo } from '../../lib/cuentaEstado'
+import { cuentaNoAsignable, etiquetaOpcionCuenta, ordenarCuentasPorCupo } from '../../lib/cuentaEstado'
 
 export default function ReubicarModal({ isOpen, onClose, onSubmit, pendiente }) {
   const { request } = useApi()
@@ -43,12 +43,14 @@ export default function ReubicarModal({ isOpen, onClose, onSubmit, pendiente }) 
     e.preventDefault()
     if (!idCuenta) return
     setIsLoading(true)
+    const destino = cuentas.find((c) => c.id === idCuenta)
     const ok = await onSubmit({
       id_cuenta: idCuenta,
       pin: pin || null,
       vencimiento_usuario: vencimiento || null,
       es_combo: esCombo,
       valor_venta: parseFloat(valorVenta) || 0,
+      destino,
     })
     setIsLoading(false)
     if (ok !== false) onClose()
@@ -101,7 +103,7 @@ export default function ReubicarModal({ isOpen, onClose, onSubmit, pendiente }) 
           >
             <option value="">Selecciona cuenta</option>
             {ordenarCuentasPorCupo(cuentasFiltradas).map((c) => (
-              <option key={c.id} value={c.id} disabled={cuentaLlena(c)}>
+              <option key={c.id} value={c.id} disabled={cuentaNoAsignable(c)}>
                 {etiquetaOpcionCuenta(c)}
               </option>
             ))}

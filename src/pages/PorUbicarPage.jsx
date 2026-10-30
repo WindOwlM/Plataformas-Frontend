@@ -7,6 +7,7 @@ import ReubicarModal from '../components/dashboard/ReubicarModal'
 import EditarPorUbicarModal from '../components/dashboard/EditarPorUbicarModal'
 import ConfirmModal from '../components/ui/ConfirmModal'
 import FechaBadge from '../components/ui/FechaBadge'
+import { rutaCuentaDestino } from '../lib/rutaCuenta'
 
 export default function PorUbicarPage() {
   const navigate = useNavigate()
@@ -31,16 +32,8 @@ export default function PorUbicarPage() {
       body: JSON.stringify(payload),
     })
     if (result.error) return false
-    const destino = result.data?.cuenta
-    const params = new URLSearchParams()
-    if (destino?.id_plataforma) params.set('plataforma', destino.id_plataforma)
-    if (destino?.correo) params.set('correo', destino.correo)
-    if (destino?.id) params.set('cuenta', destino.id)
-    if (params.toString()) {
-      navigate(`/dashboard/cuentas?${params.toString()}`)
-      return true
-    }
-    await cargar()
+    const destino = result.data?.cuenta || payload.destino || { id: payload.id_cuenta }
+    navigate(rutaCuentaDestino(destino))
     return true
   }
 

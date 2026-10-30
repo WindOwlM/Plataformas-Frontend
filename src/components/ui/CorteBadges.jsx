@@ -3,7 +3,7 @@ import { puestoCortado, puestoPorCortar, resumenCorte } from '../../lib/vencimie
 export function CorteBadgePuesto({ puesto }) {
   if (puestoCortado(puesto)) {
     return (
-      <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide border bg-slate-500/25 text-slate-200 border-slate-400/40">
+      <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide border bg-red-500/25 text-red-300 border-red-400/40">
         Quitar del perfil
       </span>
     )
@@ -29,7 +29,7 @@ export default function CorteBadges({ puestos = [] }) {
         </span>
       ) : null}
       {cortados > 0 ? (
-        <span className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wide border bg-slate-500/25 text-slate-200 border-slate-400/40">
+        <span className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wide border bg-red-500/25 text-red-300 border-red-400/50">
           Quitar del perfil{cortados > 1 ? ` · ${cortados}` : ''}
         </span>
       ) : null}

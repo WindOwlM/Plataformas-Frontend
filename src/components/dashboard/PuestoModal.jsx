@@ -7,7 +7,7 @@ import Button from '../ui/Button'
 import Modal from '../ui/Modal'
 import { fieldClass } from '../ui/fieldStyles'
 import ClienteQuickCreate from './ClienteQuickCreate'
-import { cuentaLlena, etiquetaOpcionCuenta, ordenarCuentasPorCupo } from '../../lib/cuentaEstado'
+import { cuentaNoAsignable, etiquetaOpcionCuenta, ordenarCuentasPorCupo } from '../../lib/cuentaEstado'
 
 let extraSeq = 0
 function extraKey() {
@@ -285,9 +285,9 @@ export default function PuestoModal({
                       >
                         <option value="">{linea.id_plataforma ? 'Cuenta con cupo' : 'Elige plataforma'}</option>
                         {opciones.map((c) => {
-                          const llena = cuentaLlena(c)
+                          const bloqueada = cuentaNoAsignable(c)
                           return (
-                            <option key={c.id} value={c.id} disabled={llena}>
+                            <option key={c.id} value={c.id} disabled={bloqueada}>
                               {etiquetaOpcionCuenta(c)}
                             </option>
                           )

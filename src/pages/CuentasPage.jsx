@@ -1,5 +1,5 @@
 import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, ChevronRight, Copy, Loader2, MonitorPlay, Pencil, Plus, Scissors, Trash2, UserPlus } from 'lucide-react'
 import { useApi } from '../hooks/useApi'
 import { fieldClass } from '../components/ui/fieldStyles'
@@ -24,6 +24,7 @@ import FechaBadge from '../components/ui/FechaBadge'
 import CorteBadges, { CorteBadgePuesto } from '../components/ui/CorteBadges'
 import { claseFila } from '../lib/filaSeleccion'
 import { puestoCortado } from '../lib/vencimientos'
+import { rutaCuentaDestino } from '../lib/rutaCuenta'
 
 function estadoBadge(estado) {
   const colors = {
@@ -194,6 +195,7 @@ function EncabezadoTabla({
 
 export default function CuentasPage() {
   const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
   const { request, loading } = useApi()
   const [plataformas, setPlataformas] = useState([])
   const [plataformaId, setPlataformaId] = useState('')
@@ -261,6 +263,7 @@ export default function CuentasPage() {
     }
     if (cliente) setClienteId(cliente)
     if (cuenta) {
+      setPlataformaId((prev) => prev || plat || 'todas')
       setExpandedIds((prev) => {
         const next = new Set(prev)
         next.add(cuenta)
@@ -346,7 +349,7 @@ export default function CuentasPage() {
     if (!error) await cargarCuentas()
   }, [request, cargarCuentas])
 
-  const reubicarCliente = useCallback(async (idCuentaDestino) => {
+  const reubicarCliente = useCallback(async (idCuentaDestino, destino) => {
     if (!quitar?.cuenta?.id || !quitar?.puesto?.id || !idCuentaDestino) return false
     const { error } = await request(
       `/cuentas/${quitar.cuenta.id}/puestos/${quitar.puesto.id}/reubicar`,
@@ -357,9 +360,9 @@ export default function CuentasPage() {
     )
     if (error) return false
     setQuitar(null)
-    await cargarCuentas()
+    navigate(rutaCuentaDestino(destino || { id: idCuentaDestino }))
     return true
-  }, [quitar, request, cargarCuentas])
+  }, [quitar, request, navigate])
 
   const guardarCuenta = useCallback(async (cuentaData) => {
     const result = cuentaEditando?.id

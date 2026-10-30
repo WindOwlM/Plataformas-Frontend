@@ -22,6 +22,14 @@ export function cuentaLlena(cuenta) {
   return cuenta?.estado === 'llena' || cuenta?.estado === 'vendida'
 }
 
+export function cuentaSinVencimiento(cuenta) {
+  return !/^\d{4}-\d{2}-\d{2}$/.test(String(cuenta?.fecha_vencimiento || '').slice(0, 10))
+}
+
+export function cuentaNoAsignable(cuenta) {
+  return cuentaLlena(cuenta) || cuentaSinVencimiento(cuenta)
+}
+
 export function etiquetaEstado(estado) {
   if (estado === 'vendida') return 'llena'
   return estado || 'disponible'
@@ -33,8 +41,8 @@ export function ordenarCuentasPorCupo(cuentas, idActual) {
       if (a.id === idActual) return -1
       if (b.id === idActual) return 1
     }
-    const la = cuentaLlena(a) ? 1 : 0
-    const lb = cuentaLlena(b) ? 1 : 0
+    const la = cuentaNoAsignable(a) ? 1 : 0
+    const lb = cuentaNoAsignable(b) ? 1 : 0
     if (la !== lb) return la - lb
     return String(a.correo || '').localeCompare(String(b.correo || ''), 'es')
   })
@@ -45,6 +53,8 @@ export function etiquetaOpcionCuenta(cuenta) {
   const vence = cuenta.fecha_vencimiento
     ? formatFecha(cuenta.fecha_vencimiento)
     : 'sin fecha'
-  const estado = etiquetaEstado(cuenta.estado)
+  const estado = cuentaSinVencimiento(cuenta)
+    ? 'sin vencimiento'
+    : etiquetaEstado(cuenta.estado)
   return `${correo} · vence ${vence} · ${estado}`
 }

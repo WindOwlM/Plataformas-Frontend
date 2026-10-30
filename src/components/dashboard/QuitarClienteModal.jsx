@@ -4,7 +4,7 @@ import { useApi } from '../../hooks/useApi'
 import Button from '../ui/Button'
 import Modal from '../ui/Modal'
 import { fieldClass } from '../ui/fieldStyles'
-import { cuentaLlena, etiquetaOpcionCuenta, ordenarCuentasPorCupo } from '../../lib/cuentaEstado'
+import { cuentaNoAsignable, etiquetaOpcionCuenta, ordenarCuentasPorCupo } from '../../lib/cuentaEstado'
 
 export default function QuitarClienteModal({
   isOpen,
@@ -43,7 +43,8 @@ export default function QuitarClienteModal({
     if (!idDestino) return
     setGuardando(true)
     setError('')
-    const ok = await onReubicar(idDestino)
+    const destino = cuentas.find((c) => c.id === idDestino)
+    const ok = await onReubicar(idDestino, destino)
     setGuardando(false)
     if (ok === false) {
       setError('No se pudo reubicar. Revisa que la cuenta tenga cupo.')
@@ -72,9 +73,9 @@ export default function QuitarClienteModal({
             >
               <option value="">Selecciona una cuenta con cupo</option>
               {ordenarCuentasPorCupo(cuentas).map((c) => {
-                const llena = cuentaLlena(c)
+                const bloqueada = cuentaNoAsignable(c)
                 return (
-                  <option key={c.id} value={c.id} disabled={llena}>
+                  <option key={c.id} value={c.id} disabled={bloqueada}>
                     {etiquetaOpcionCuenta(c)}
                   </option>
                 )
