@@ -103,7 +103,8 @@ export function seccionesPorPlataforma(cuentas, sort) {
 }
 
 export function esComboPuesto(puesto, cuentas, clienteId) {
-  if (puesto.es_combo) return true
+  if (puesto.es_combo === true || puesto.es_combo === 'true') return true
+  if (puesto.es_combo === false || puesto.es_combo === 'false') return false
   if (!puesto.id_usuario) return false
   const id = clienteId || puesto.id_usuario
   let veces = 0

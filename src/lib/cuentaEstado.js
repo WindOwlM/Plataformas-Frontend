@@ -14,6 +14,11 @@ export function puestosDe(cuenta) {
 }
 
 export function cuentaLlena(cuenta) {
+  const max = Number(cuenta?.max_puestos)
+  const ocupados = Number(cuenta?.ocupados)
+  if (Number.isFinite(max) && max > 0 && Number.isFinite(ocupados)) {
+    return ocupados >= max
+  }
   return cuenta?.estado === 'llena' || cuenta?.estado === 'vendida'
 }
 

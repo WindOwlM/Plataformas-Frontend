@@ -54,7 +54,7 @@ export default function PuestoModal({
         setVencimiento(puesto.vencimiento_usuario || '')
         setValorVenta(puesto.valor_venta || '')
         setNotas(puesto.notas || '')
-        setEsCombo(puesto.es_combo || false)
+        setEsCombo(puesto.es_combo === true || puesto.es_combo === 'true')
         setExtras([])
       } else {
         setIdUsuario('')
@@ -116,8 +116,8 @@ export default function PuestoModal({
 
     setIsLoading(true)
 
-    const extrasValidas = esCombo && !esEdicion
-      ? extras.filter((linea) => linea.id_cuenta)
+    const extrasValidas = esCombo
+      ? extras.filter((linea) => linea.id_cuenta && !linea.id_puesto)
       : []
     const esComboFinal = esCombo || extrasValidas.length > 0
 
@@ -159,7 +159,7 @@ export default function PuestoModal({
       onClose={onClose}
       title={esEdicion ? 'Editar asignación' : 'Asignar cliente'}
       subtitle={cuenta?.correo ? `Cuenta: ${cuenta.correo}` : ''}
-      maxWidth={esCombo && !esEdicion ? 'max-w-xl' : 'max-w-md'}
+      maxWidth={esCombo ? 'max-w-xl' : 'max-w-md'}
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
@@ -237,7 +237,7 @@ export default function PuestoModal({
           <span className="text-sm text-gray-400">Es combo (múltiples servicios)</span>
         </label>
 
-        {esCombo && !esEdicion ? (
+        {esCombo ? (
           <div className="space-y-3 rounded-xl border border-indigo-500/30 bg-indigo-500/5 p-3">
             <p className="text-xs text-gray-400">
               Elige otras plataformas. Se copia PIN, fecha y precio; puedes cambiarlos en cada una.

@@ -101,7 +101,9 @@ export function puestoCortado(puesto) {
 }
 
 export function puestoPorCortar(puesto) {
-  return !puestoCortado(puesto) && classifyFecha(puesto?.vencimiento_usuario) === 'vencida'
+  if (puestoCortado(puesto)) return false
+  const bucket = classifyFecha(puesto?.vencimiento_usuario)
+  return bucket === 'vencida' || bucket === 'hoy'
 }
 
 export function resumenCorte(puestos = []) {
