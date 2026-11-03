@@ -1,6 +1,6 @@
 import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, ChevronRight, Copy, Loader2, MonitorPlay, Pencil, Plus, Scissors, Trash2, UserPlus } from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowUpDown, Ban, ChevronDown, ChevronRight, Copy, Loader2, MonitorPlay, Pencil, Plus, Scissors, Trash2, UserPlus } from 'lucide-react'
 import { useApi } from '../hooks/useApi'
 import { fieldClass } from '../components/ui/fieldStyles'
 import PuestoModal from '../components/dashboard/PuestoModal'
@@ -15,6 +15,7 @@ import Button from '../components/ui/Button'
 import QuitarClienteModal from '../components/dashboard/QuitarClienteModal'
 import ConfirmModal from '../components/ui/ConfirmModal'
 import {
+  cuentaInhabilitada,
   cuentaLlena,
   etiquetaEstado,
   puestosDe,
@@ -31,8 +32,24 @@ function estadoBadge(estado) {
     disponible: 'bg-green-500/20 text-green-400 border-green-500/30',
     llena: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
     vendida: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
+    inhabilitada: 'bg-gray-500/25 text-gray-300 border-gray-400/40',
   }
   return colors[estado] || colors.disponible
+}
+
+function BotonInhabilitar({ cuenta, onInhabilitar, onHabilitar }) {
+  const off = cuentaInhabilitada(cuenta)
+  return (
+    <Button
+      size="sm"
+      variant={off ? 'secondary' : 'danger'}
+      onClick={() => (off ? onHabilitar(cuenta) : onInhabilitar(cuenta))}
+      title={off ? 'Habilitar cuenta' : 'Inhabilitar cuenta'}
+    >
+      <Ban className="h-3.5 w-3.5" />
+      {off ? 'Habilitar' : 'Inhabilitar'}
+    </Button>
+  )
 }
 
 const thFilterClass =
@@ -117,6 +134,7 @@ function FiltrosBar({
         <option value="">Estado: todos</option>
         <option value="disponible">Disponible</option>
         <option value="llena">Llena</option>
+        <option value="inhabilitada">Inhabilitada</option>
       </select>
       <select
         aria-label="Filtrar corte"
@@ -171,6 +189,7 @@ function EncabezadoTabla({
             <option value="">Todos</option>
             <option value="disponible">Disponible</option>
             <option value="llena">Llena</option>
+            <option value="inhabilitada">Inhabilitada</option>
           </select>
         </ThCol>
         <ThCol label="Vence" campo="vence" sort={sort} onSort={onSort} />
@@ -215,6 +234,7 @@ export default function CuentasPage() {
   const [cuentaEditando, setCuentaEditando] = useState(null)
   const [quitar, setQuitar] = useState(null)
   const [cuentaAEliminar, setCuentaAEliminar] = useState(null)
+  const [cuentaAInhabilitar, setCuentaAInhabilitar] = useState(null)
   const [puestoACortar, setPuestoACortar] = useState(null)
   const [sort, setSort] = useState({ campo: '', dir: 'asc' })
   const [filtroEstado, setFiltroEstado] = useState('')
@@ -429,6 +449,20 @@ export default function CuentasPage() {
     setPuestoACortar(null)
     if (!error) await cargarCuentas()
   }, [puestoACortar, request, cargarCuentas])
+
+  const cambiarInhabilitada = useCallback(async (cuenta, inhabilitada) => {
+    if (!cuenta?.id) return
+    const { error } = await request(`/cuentas/${cuenta.id}/estado`, {
+      method: 'PATCH',
+      body: JSON.stringify({ inhabilitada }),
+    })
+    setCuentaAInhabilitar(null)
+    if (!error) await cargarCuentas()
+  }, [request, cargarCuentas])
+
+  const confirmarInhabilitar = useCallback(async () => {
+    await cambiarInhabilitada(cuentaAInhabilitar, true)
+  }, [cambiarInhabilitada, cuentaAInhabilitar])
 
   const eliminarCuenta = useCallback(async () => {
     if (!cuentaAEliminar?.id) return
@@ -683,6 +717,8 @@ export default function CuentasPage() {
                     onEditarPuesto={abrirEditarPuesto}
                     onQuitar={handleQuitar}
                     onEliminarCuenta={setCuentaAEliminar}
+                    onInhabilitar={setCuentaAInhabilitar}
+                    onHabilitar={(c) => cambiarInhabilitada(c, false)}
                     onCortar={setPuestoACortar}
                     onBorrarDefinitivo={borrarDefinitivo}
                     seleccionada={
@@ -714,6 +750,8 @@ export default function CuentasPage() {
                         onEditarPuesto={abrirEditarPuesto}
                         onQuitar={handleQuitar}
                         onEliminarCuenta={setCuentaAEliminar}
+                        onInhabilitar={setCuentaAInhabilitar}
+                        onHabilitar={(c) => cambiarInhabilitada(c, false)}
                         onCortar={setPuestoACortar}
                         onBorrarDefinitivo={borrarDefinitivo}
                         seleccionada={
@@ -778,6 +816,16 @@ export default function CuentasPage() {
         title="Eliminar cuenta"
         message={`¿Eliminar ${cuentaAEliminar?.correo}? Se quitarán también los clientes asignados a esta cuenta.`}
         confirmText="Eliminar"
+        variant="danger"
+      />
+
+      <ConfirmModal
+        isOpen={!!cuentaAInhabilitar}
+        onClose={() => setCuentaAInhabilitar(null)}
+        onConfirm={confirmarInhabilitar}
+        title="Inhabilitar cuenta"
+        message={`¿Inhabilitar ${cuentaAInhabilitar?.correo}? No se podrá asignar ni reubicar en ella hasta que la habilites de nuevo.`}
+        confirmText="Inhabilitar"
         variant="danger"
       />
 
@@ -859,16 +907,19 @@ const CuentaCard = memo(function CuentaCard({
   onEditarPuesto,
   onQuitar,
   onEliminarCuenta,
+  onInhabilitar,
+  onHabilitar,
   onCortar,
   onBorrarDefinitivo,
   seleccionada,
   puestoSeleccionadoId,
 }) {
   const llena = cuentaLlena(cuenta)
+  const inhabilitada = cuentaInhabilitada(cuenta)
   const estado = etiquetaEstado(cuenta.estado)
 
   return (
-    <div className={claseFila(seleccionada, 'p-3 space-y-3')}>
+    <div className={claseFila(seleccionada, `p-3 space-y-3 ${inhabilitada ? 'opacity-70' : ''}`)}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="flex items-center gap-1.5 flex-wrap">
@@ -918,13 +969,14 @@ const CuentaCard = memo(function CuentaCard({
           <Pencil className="h-3.5 w-3.5" />
           Editar
         </Button>
-        <Button size="sm" onClick={() => onAsignar(cuenta)} disabled={llena} title={llena ? 'Llena' : 'Asignar'}>
+        <Button size="sm" onClick={() => onAsignar(cuenta)} disabled={llena || inhabilitada} title={inhabilitada ? 'Inhabilitada' : llena ? 'Llena' : 'Asignar'}>
           <UserPlus className="h-3.5 w-3.5" />
-          {llena ? 'Llena' : 'Asignar'}
+          {inhabilitada ? 'Inhabilitada' : llena ? 'Llena' : 'Asignar'}
         </Button>
         <Button size="sm" variant="secondary" onClick={() => onToggle(cuenta.id)} title={expanded ? 'Ocultar' : 'Desplegar'}>
           {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
         </Button>
+        <BotonInhabilitar cuenta={cuenta} onInhabilitar={onInhabilitar} onHabilitar={onHabilitar} />
         <Button size="sm" variant="danger" onClick={() => onEliminarCuenta(cuenta)} title="Eliminar cuenta">
           <Trash2 className="h-3.5 w-3.5" />
         </Button>
@@ -1003,17 +1055,20 @@ const FragmentRow = memo(function FragmentRow({
   onEditarPuesto,
   onQuitar,
   onEliminarCuenta,
+  onInhabilitar,
+  onHabilitar,
   onCortar,
   onBorrarDefinitivo,
   seleccionada,
   puestoSeleccionadoId,
 }) {
   const llena = cuentaLlena(cuenta)
+  const inhabilitada = cuentaInhabilitada(cuenta)
   const estado = etiquetaEstado(cuenta.estado)
 
   return (
     <Fragment>
-      <tr className={claseFila(seleccionada, 'hover:bg-gray-700/40 transition-colors')}>
+      <tr className={claseFila(seleccionada, `hover:bg-gray-700/40 transition-colors ${inhabilitada ? 'opacity-70' : ''}`)}>
         <td className="px-3 py-2">
           <span className="inline-flex items-center gap-1.5">
             <span className="text-white font-medium whitespace-nowrap">{cuenta.correo}</span>
@@ -1070,13 +1125,14 @@ const FragmentRow = memo(function FragmentRow({
               <Pencil className="h-3.5 w-3.5" />
               Editar
             </Button>
-            <Button size="sm" onClick={() => onAsignar(cuenta)} disabled={llena} title={llena ? 'Llena' : 'Asignar'}>
+            <Button size="sm" onClick={() => onAsignar(cuenta)} disabled={llena || inhabilitada} title={inhabilitada ? 'Inhabilitada' : llena ? 'Llena' : 'Asignar'}>
               <UserPlus className="h-3.5 w-3.5" />
-              {llena ? 'Llena' : 'Asignar'}
+              {inhabilitada ? 'Inhabilitada' : llena ? 'Llena' : 'Asignar'}
             </Button>
             <Button size="sm" variant="secondary" onClick={() => onToggle(cuenta.id)} title={expanded ? 'Ocultar' : 'Desplegar'}>
               {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
             </Button>
+            <BotonInhabilitar cuenta={cuenta} onInhabilitar={onInhabilitar} onHabilitar={onHabilitar} />
             <Button
               size="sm"
               variant="danger"

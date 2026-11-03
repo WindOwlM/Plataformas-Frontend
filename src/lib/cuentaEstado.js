@@ -26,12 +26,18 @@ export function cuentaSinVencimiento(cuenta) {
   return !/^\d{4}-\d{2}-\d{2}$/.test(String(cuenta?.fecha_vencimiento || '').slice(0, 10))
 }
 
+export function cuentaInhabilitada(cuenta) {
+  const e = String(cuenta?.estado || '').toLowerCase()
+  return e === 'inhabilitada' || e === 'inactiva' || e === 'suspendida'
+}
+
 export function cuentaNoAsignable(cuenta) {
-  return cuentaLlena(cuenta) || cuentaSinVencimiento(cuenta)
+  return cuentaLlena(cuenta) || cuentaSinVencimiento(cuenta) || cuentaInhabilitada(cuenta)
 }
 
 export function etiquetaEstado(estado) {
   if (estado === 'vendida') return 'llena'
+  if (estado === 'inactiva' || estado === 'suspendida') return 'inhabilitada'
   return estado || 'disponible'
 }
 
