@@ -63,6 +63,8 @@ export default function CuentaModal({
             es_combo: p.es_combo || false,
             valor_venta: p.valor_venta || '',
             notas: p.notas || '',
+            estado: p.estado || 'activa',
+            fecha_venta: p.fecha_venta || null,
           })))
         } else {
           setPuestos([{ id_usuario: '', pin: '', vencimiento_usuario: '', es_combo: false, valor_venta: '', notas: '' }])
@@ -147,6 +149,8 @@ export default function CuentaModal({
       es_combo: p.es_combo || false,
       valor_venta: parseFloat(p.valor_venta) || 0,
       notas: p.notas?.trim() || null,
+      estado: p.estado || 'activa',
+      fecha_venta: p.fecha_venta || null,
     }))
 
     const cuentaData = {
@@ -271,15 +275,21 @@ export default function CuentaModal({
               <div
                 key={index}
                 className={`p-4 rounded-xl border ${
-                  puesto.id_usuario
-                    ? 'bg-indigo-500/10 border-indigo-500/30'
-                    : 'bg-gray-800/50 border-gray-600/40 border-dashed'
+                  String(puesto.estado || '').toLowerCase() === 'cortado'
+                    ? 'bg-red-500/10 border-red-500/30'
+                    : puesto.id_usuario
+                      ? 'bg-indigo-500/10 border-indigo-500/30'
+                      : 'bg-gray-800/50 border-gray-600/40 border-dashed'
                 }`}
               >
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-sm font-medium text-gray-300">
                     Puesto #{index + 1}
-                    {puesto.id_usuario && <span className="ml-2 text-xs text-indigo-400">Asignado</span>}
+                    {String(puesto.estado || '').toLowerCase() === 'cortado' ? (
+                      <span className="ml-2 text-xs text-red-300">Quitar del perfil</span>
+                    ) : puesto.id_usuario ? (
+                      <span className="ml-2 text-xs text-indigo-400">Asignado</span>
+                    ) : null}
                   </span>
                   {puestos.length > 1 && (
                     <button
