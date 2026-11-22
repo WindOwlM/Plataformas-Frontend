@@ -61,7 +61,7 @@ const filtroMovilClass =
 function ThCol({ label, campo, sort, onSort, children }) {
   const active = sort.campo === campo
   return (
-    <th className="px-3 py-2.5 font-medium align-top">
+    <th className="px-2 xl:px-3 py-2.5 font-medium align-top">
       <button
         type="button"
         onClick={() => onSort(campo)}
@@ -206,7 +206,7 @@ function EncabezadoTabla({
             <option value="cortado">Cortado</option>
           </select>
         </ThCol>
-        <th className="px-3 py-2.5 font-medium"> </th>
+        <th className="px-2 xl:px-3 py-2.5 font-medium"> </th>
       </tr>
     </thead>
   )
@@ -866,7 +866,7 @@ function AccionesPuesto({
     )
   }
   return (
-    <div className="inline-flex items-center justify-end gap-1">
+    <div className="inline-flex flex-wrap items-center justify-end gap-1">
       <button
         type="button"
         onClick={() => onCortar({ cuenta, puesto })}
@@ -1069,7 +1069,7 @@ const FragmentRow = memo(function FragmentRow({
   return (
     <Fragment>
       <tr className={claseFila(seleccionada, `hover:bg-gray-700/40 transition-colors ${inhabilitada ? 'opacity-70' : ''}`)}>
-        <td className="px-3 py-2">
+        <td className="px-2 xl:px-3 py-2">
           <span className="inline-flex items-center gap-1.5">
             <span className="text-white font-medium break-all">{cuenta.correo}</span>
             {cuenta.correo ? (
@@ -1085,10 +1085,10 @@ const FragmentRow = memo(function FragmentRow({
             <CorteBadges puestos={puestos} />
           </span>
         </td>
-        <td className="px-3 py-2">
+        <td className="px-2 xl:px-3 py-2">
           {cuenta.contrasena ? (
             <span className="inline-flex items-center gap-1.5">
-              <span className="font-mono text-gray-200 whitespace-nowrap">{cuenta.contrasena}</span>
+              <span className="font-mono text-gray-200 break-all">{cuenta.contrasena}</span>
               <button
                 type="button"
                 className="p-1 text-gray-500 hover:text-white rounded"
@@ -1102,37 +1102,37 @@ const FragmentRow = memo(function FragmentRow({
             <span className="text-gray-500">—</span>
           )}
         </td>
-        <td className="px-3 py-2 text-gray-300 whitespace-nowrap">
+        <td className="px-2 xl:px-3 py-2 text-gray-300">
           {cuenta.proveedor?.nombre_prov || '—'}
         </td>
-        <td className="px-3 py-2">
+        <td className="px-2 xl:px-3 py-2">
           <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium border ${estadoBadge(estado)}`}>
             {estado}
           </span>
         </td>
-        <td className="px-3 py-2 whitespace-nowrap">
+        <td className="px-2 xl:px-3 py-2 whitespace-nowrap">
           <FechaBadge fecha={cuenta.fecha_vencimiento} empty="Sin fecha" />
         </td>
-        <td className="px-3 py-2 text-gray-300 whitespace-nowrap">
+        <td className="px-2 xl:px-3 py-2 text-gray-300 whitespace-nowrap">
           {cuenta.precio_costo != null ? `$${cuenta.precio_costo}` : '—'}
         </td>
-        <td className="px-3 py-2 text-gray-300 whitespace-nowrap">
+        <td className="px-2 xl:px-3 py-2 text-gray-300 whitespace-nowrap">
           {cuenta.ocupados ?? puestos.length}/{cuenta.max_puestos ?? 5}
         </td>
-        <td className="px-3 py-2 whitespace-nowrap">
-          <div className="flex items-center justify-end gap-1">
+        <td className="px-2 xl:px-3 py-2">
+          <div className="flex flex-wrap items-center justify-end gap-1">
             <Button size="sm" variant="secondary" onClick={() => onEditarCuenta(cuenta)} title="Editar">
               <Pencil className="h-3.5 w-3.5" />
-              <span className="hidden 2xl:inline">Editar</span>
+              Editar
             </Button>
             <Button size="sm" onClick={() => onAsignar(cuenta)} disabled={llena || inhabilitada} title={inhabilitada ? 'Inhabilitada' : llena ? 'Llena' : 'Asignar'}>
               <UserPlus className="h-3.5 w-3.5" />
-              <span className="hidden 2xl:inline">{inhabilitada ? 'Inhabilitada' : llena ? 'Llena' : 'Asignar'}</span>
+              {inhabilitada ? 'Inhabilitada' : llena ? 'Llena' : 'Asignar'}
             </Button>
             <Button size="sm" variant="secondary" onClick={() => onToggle(cuenta.id)} title={expanded ? 'Ocultar' : 'Desplegar'}>
               {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
             </Button>
-            <BotonInhabilitar cuenta={cuenta} onInhabilitar={onInhabilitar} onHabilitar={onHabilitar} labelClassName="hidden 2xl:inline" />
+            <BotonInhabilitar cuenta={cuenta} onInhabilitar={onInhabilitar} onHabilitar={onHabilitar} />
             <Button
               size="sm"
               variant="danger"
@@ -1146,7 +1146,7 @@ const FragmentRow = memo(function FragmentRow({
       </tr>
       {expanded && (
         <tr className="bg-gray-900/50">
-          <td colSpan={colSpan} className="px-4 py-3">
+          <td colSpan={colSpan} className="px-2 xl:px-4 py-3">
             {puestos.length === 0 ? (
               <p className="text-sm text-gray-500 py-2">Esta cuenta no tiene clientes asignados</p>
             ) : (
@@ -1154,13 +1154,13 @@ const FragmentRow = memo(function FragmentRow({
                 <table className="w-full text-sm">
                   <thead className="bg-gray-800 text-gray-400 text-xs uppercase">
                     <tr>
-                      <th className="px-3 py-2 font-medium text-left">Cliente</th>
-                      <th className="px-3 py-2 font-medium text-left">Teléfono</th>
-                      <th className="px-3 py-2 font-medium text-left">PIN</th>
-                      <th className="px-3 py-2 font-medium text-left">Vencimiento</th>
-                      <th className="px-3 py-2 font-medium text-left">Venta</th>
-                      <th className="px-3 py-2 font-medium text-left">Notas</th>
-                      <th className="px-3 py-2 font-medium text-right"> </th>
+                      <th className="px-2 xl:px-3 py-2 font-medium text-left">Cliente</th>
+                      <th className="px-2 xl:px-3 py-2 font-medium text-left">Teléfono</th>
+                      <th className="px-2 xl:px-3 py-2 font-medium text-left">PIN</th>
+                      <th className="px-2 xl:px-3 py-2 font-medium text-left">Vencimiento</th>
+                      <th className="px-2 xl:px-3 py-2 font-medium text-left">Venta</th>
+                      <th className="px-2 xl:px-3 py-2 font-medium text-left">Notas</th>
+                      <th className="px-2 xl:px-3 py-2 font-medium text-right"> </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-700">
@@ -1180,7 +1180,7 @@ const FragmentRow = memo(function FragmentRow({
                                 : ''
                           )}
                         >
-                          <td className="px-3 py-2 text-white">
+                          <td className="px-2 xl:px-3 py-2 text-white">
                             <span className="inline-flex items-center gap-2 flex-wrap">
                               {puesto.usuario?.nombre || 'Sin cliente'}
                               {esComboPuesto(puesto, cuentas) && (
@@ -1196,22 +1196,22 @@ const FragmentRow = memo(function FragmentRow({
                               </p>
                             ) : null}
                           </td>
-                          <td className="px-3 py-2 text-gray-400">
+                          <td className="px-2 xl:px-3 py-2 text-gray-400">
                             {puesto.usuario?.numero_telefono || '—'}
                           </td>
-                          <td className="px-3 py-2 font-mono text-gray-300">
+                          <td className="px-2 xl:px-3 py-2 font-mono text-gray-300">
                             {puesto.pin || '—'}
                           </td>
-                          <td className="px-3 py-2">
+                          <td className="px-2 xl:px-3 py-2">
                             <FechaBadge fecha={puesto.vencimiento_usuario} />
                           </td>
-                          <td className="px-3 py-2 text-gray-300">
+                          <td className="px-2 xl:px-3 py-2 text-gray-300">
                             {puesto.valor_venta != null ? `$${puesto.valor_venta}` : '—'}
                           </td>
-                          <td className="px-3 py-2 text-gray-400 max-w-[200px]">
+                          <td className="px-2 xl:px-3 py-2 text-gray-400 max-w-[200px] break-words">
                             {puesto.notas || '—'}
                           </td>
-                          <td className="px-3 py-2 text-right">
+                          <td className="px-2 xl:px-3 py-2 text-right">
                             <AccionesPuesto
                               cuenta={cuenta}
                               puesto={puesto}
