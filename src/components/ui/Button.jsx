@@ -7,6 +7,7 @@ export default function Button({
   size = 'md',
   onClick,
   className = '',
+  title,
 }) {
   const variants = {
     primary: 'bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500 text-white',
@@ -26,6 +27,8 @@ export default function Button({
       type={type}
       onClick={onClick}
       disabled={isLoading || disabled}
+      title={title}
+      aria-label={title}
       className={`
         inline-flex items-center justify-center gap-2
         rounded-lg font-medium shadow-sm

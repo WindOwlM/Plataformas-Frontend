@@ -37,7 +37,7 @@ function estadoBadge(estado) {
   return colors[estado] || colors.disponible
 }
 
-function BotonInhabilitar({ cuenta, onInhabilitar, onHabilitar }) {
+function BotonInhabilitar({ cuenta, onInhabilitar, onHabilitar, labelClassName = '' }) {
   const off = cuentaInhabilitada(cuenta)
   return (
     <Button
@@ -47,7 +47,7 @@ function BotonInhabilitar({ cuenta, onInhabilitar, onHabilitar }) {
       title={off ? 'Habilitar cuenta' : 'Inhabilitar cuenta'}
     >
       <Ban className="h-3.5 w-3.5" />
-      {off ? 'Habilitar' : 'Inhabilitar'}
+      <span className={labelClassName}>{off ? 'Habilitar' : 'Inhabilitar'}</span>
     </Button>
   )
 }
@@ -1071,7 +1071,7 @@ const FragmentRow = memo(function FragmentRow({
       <tr className={claseFila(seleccionada, `hover:bg-gray-700/40 transition-colors ${inhabilitada ? 'opacity-70' : ''}`)}>
         <td className="px-3 py-2">
           <span className="inline-flex items-center gap-1.5">
-            <span className="text-white font-medium whitespace-nowrap">{cuenta.correo}</span>
+            <span className="text-white font-medium break-all">{cuenta.correo}</span>
             {cuenta.correo ? (
               <button
                 type="button"
@@ -1123,16 +1123,16 @@ const FragmentRow = memo(function FragmentRow({
           <div className="flex items-center justify-end gap-1">
             <Button size="sm" variant="secondary" onClick={() => onEditarCuenta(cuenta)} title="Editar">
               <Pencil className="h-3.5 w-3.5" />
-              Editar
+              <span className="hidden 2xl:inline">Editar</span>
             </Button>
             <Button size="sm" onClick={() => onAsignar(cuenta)} disabled={llena || inhabilitada} title={inhabilitada ? 'Inhabilitada' : llena ? 'Llena' : 'Asignar'}>
               <UserPlus className="h-3.5 w-3.5" />
-              {inhabilitada ? 'Inhabilitada' : llena ? 'Llena' : 'Asignar'}
+              <span className="hidden 2xl:inline">{inhabilitada ? 'Inhabilitada' : llena ? 'Llena' : 'Asignar'}</span>
             </Button>
             <Button size="sm" variant="secondary" onClick={() => onToggle(cuenta.id)} title={expanded ? 'Ocultar' : 'Desplegar'}>
               {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
             </Button>
-            <BotonInhabilitar cuenta={cuenta} onInhabilitar={onInhabilitar} onHabilitar={onHabilitar} />
+            <BotonInhabilitar cuenta={cuenta} onInhabilitar={onInhabilitar} onHabilitar={onHabilitar} labelClassName="hidden 2xl:inline" />
             <Button
               size="sm"
               variant="danger"

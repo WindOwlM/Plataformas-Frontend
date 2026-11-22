@@ -60,7 +60,7 @@ export default function AppShell() {
       </header>
 
       <div className="lg:flex lg:min-h-[calc(100vh-4rem)]">
-        <aside className="hidden lg:flex w-56 shrink-0 flex-col border-r border-gray-800 bg-gray-900/40 p-4">
+        <aside className="hidden lg:flex w-48 shrink-0 flex-col border-r border-gray-800 bg-gray-900/40 p-3">
           <nav className="flex flex-col gap-1">
             {navItems.map(({ to, label, icon: Icon, end }) => (
               <NavLink key={to} to={to} end={end} className={navClass}>
@@ -71,7 +71,7 @@ export default function AppShell() {
           </nav>
         </aside>
 
-        <main className="flex-1 min-w-0 px-3 py-4 sm:px-6 sm:py-6 lg:px-8">
+        <main className="flex-1 min-w-0 px-2 py-3 sm:px-3 lg:px-4">
           <div className="w-full">
             <Outlet />
           </div>
