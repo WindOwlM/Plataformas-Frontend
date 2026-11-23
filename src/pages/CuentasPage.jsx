@@ -89,6 +89,7 @@ function FiltrosBar({
   setFiltroEstado,
   filtroCorte,
   setFiltroCorte,
+  soloInhabilitadas,
 }) {
   const sortValue = sort.campo ? `${sort.campo}:${sort.dir}` : ''
   return (
@@ -125,17 +126,18 @@ function FiltrosBar({
           <option key={nombre} value={nombre}>{nombre}</option>
         ))}
       </select>
-      <select
-        aria-label="Filtrar estado"
-        value={filtroEstado}
-        onChange={(e) => setFiltroEstado(e.target.value)}
-        className={filtroMovilClass}
-      >
-        <option value="">Estado: todos</option>
-        <option value="disponible">Disponible</option>
-        <option value="llena">Llena</option>
-        <option value="inhabilitada">Inhabilitada</option>
-      </select>
+      {!soloInhabilitadas && (
+        <select
+          aria-label="Filtrar estado"
+          value={filtroEstado}
+          onChange={(e) => setFiltroEstado(e.target.value)}
+          className={filtroMovilClass}
+        >
+          <option value="">Estado: todos</option>
+          <option value="disponible">Disponible</option>
+          <option value="llena">Llena</option>
+        </select>
+      )}
       <select
         aria-label="Filtrar corte"
         value={filtroCorte}
@@ -160,6 +162,7 @@ function EncabezadoTabla({
   setFiltroEstado,
   filtroCorte,
   setFiltroCorte,
+  soloInhabilitadas,
 }) {
   return (
     <thead className="bg-gray-900/60 text-gray-400 text-xs uppercase tracking-wide">
@@ -180,17 +183,18 @@ function EncabezadoTabla({
           </select>
         </ThCol>
         <ThCol label="Estado" campo="estado" sort={sort} onSort={onSort}>
-          <select
-            aria-label="Filtrar estado"
-            value={filtroEstado}
-            onChange={(e) => setFiltroEstado(e.target.value)}
-            className={thFilterClass}
-          >
-            <option value="">Todos</option>
-            <option value="disponible">Disponible</option>
-            <option value="llena">Llena</option>
-            <option value="inhabilitada">Inhabilitada</option>
-          </select>
+          {!soloInhabilitadas && (
+            <select
+              aria-label="Filtrar estado"
+              value={filtroEstado}
+              onChange={(e) => setFiltroEstado(e.target.value)}
+              className={thFilterClass}
+            >
+              <option value="">Todos</option>
+              <option value="disponible">Disponible</option>
+              <option value="llena">Llena</option>
+            </select>
+          )}
         </ThCol>
         <ThCol label="Vence" campo="vence" sort={sort} onSort={onSort} />
         <ThCol label="Costo" campo="costo" sort={sort} onSort={onSort} />
@@ -212,12 +216,13 @@ function EncabezadoTabla({
   )
 }
 
-export default function CuentasPage() {
+export default function CuentasPage({ soloInhabilitadas = false }) {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const { request, loading } = useApi()
   const [plataformas, setPlataformas] = useState([])
-  const [plataformaId, setPlataformaId] = useState('')
+  // En la vista de inhabilitadas se muestran todas las plataformas por defecto
+  const [plataformaId, setPlataformaId] = useState(soloInhabilitadas ? 'todas' : '')
   const [clientes, setClientes] = useState([])
   const [clienteId, setClienteId] = useState('')
   const [correoFiltro, setCorreoFiltro] = useState('')
@@ -491,7 +496,8 @@ export default function CuentasPage() {
   }, [correoFiltro, sugerenciasCuenta])
 
   const cuentasVista = useMemo(() => {
-    let list = cuentas
+    // Las inhabilitadas solo se ven en su propia vista; al habilitarlas vuelven a Cuentas
+    let list = cuentas.filter((c) => cuentaInhabilitada(c) === soloInhabilitadas)
     const cq = (correoFiltro || correoQuery).trim().toLowerCase()
     if (cq && !correoFiltro) {
       list = list.filter((c) => String(c.correo || '').toLowerCase().includes(cq))
@@ -507,7 +513,7 @@ export default function CuentasPage() {
       proveedor: filtroProveedor,
       corte: filtroCorte,
     })
-  }, [cuentas, correoFiltro, correoQuery, usuarioQuery, clienteId, filtroEstado, filtroProveedor, filtroCorte])
+  }, [cuentas, soloInhabilitadas, correoFiltro, correoQuery, usuarioQuery, clienteId, filtroEstado, filtroProveedor, filtroCorte])
 
   const proveedoresTabla = useMemo(() => {
     const set = new Set()
@@ -547,6 +553,7 @@ export default function CuentasPage() {
     setFiltroEstado,
     filtroCorte,
     setFiltroCorte,
+    soloInhabilitadas,
   }
   const propsFiltrosBar = {
     sort,
@@ -558,6 +565,7 @@ export default function CuentasPage() {
     setFiltroEstado,
     filtroCorte,
     setFiltroCorte,
+    soloInhabilitadas,
   }
 
   const filasPorSeccion = useMemo(
@@ -582,15 +590,21 @@ export default function CuentasPage() {
     <div className="space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold text-white">Cuentas</h2>
+          <h2 className="text-xl font-bold text-white">
+            {soloInhabilitadas ? 'Cuentas inhabilitadas' : 'Cuentas'}
+          </h2>
           <p className="text-sm text-gray-400 mt-1">
-            Filtra por plataforma, correo de la cuenta o cliente
+            {soloInhabilitadas
+              ? 'Al habilitar una cuenta vuelve a aparecer en Cuentas con las demás'
+              : 'Filtra por plataforma, correo de la cuenta o cliente'}
           </p>
         </div>
-        <Button onClick={abrirNuevaCuenta}>
-          <Plus className="h-4 w-4" />
-          Nueva cuenta
-        </Button>
+        {!soloInhabilitadas && (
+          <Button onClick={abrirNuevaCuenta}>
+            <Plus className="h-4 w-4" />
+            Nueva cuenta
+          </Button>
+        )}
       </div>
 
       <div className="bg-gray-800 border border-gray-700 rounded-xl p-4 sm:p-5">
@@ -681,7 +695,9 @@ export default function CuentasPage() {
                       <td colSpan={colSpan} className="px-3 py-10 text-center text-gray-400">
                         {hayFiltroColumna
                           ? 'Ninguna cuenta coincide con ese filtro. Cambia el filtro de la columna para volver a verlas.'
-                          : `No hay cuentas para ${plataformaNombre}`}
+                          : soloInhabilitadas
+                            ? 'No hay cuentas inhabilitadas'
+                            : `No hay cuentas para ${plataformaNombre}`}
                       </td>
                     </tr>
                   </tbody>
@@ -690,7 +706,9 @@ export default function CuentasPage() {
               <p className="lg:hidden px-3 py-10 text-center text-gray-400">
                 {hayFiltroColumna
                   ? 'Ninguna cuenta coincide con ese filtro. Cambia el filtro para volver a verlas.'
-                  : `No hay cuentas para ${plataformaNombre}`}
+                  : soloInhabilitadas
+                    ? 'No hay cuentas inhabilitadas'
+                    : `No hay cuentas para ${plataformaNombre}`}
               </p>
             </div>
           ) : filasPorSeccion.map((seccion) => (
@@ -824,7 +842,7 @@ export default function CuentasPage() {
         onClose={() => setCuentaAInhabilitar(null)}
         onConfirm={confirmarInhabilitar}
         title="Inhabilitar cuenta"
-        message={`¿Inhabilitar ${cuentaAInhabilitar?.correo}? No se podrá asignar ni reubicar en ella hasta que la habilites de nuevo.`}
+        message={`¿Inhabilitar ${cuentaAInhabilitar?.correo}? Pasará a la sección Inhabilitadas y no se podrá asignar ni reubicar en ella hasta que la habilites de nuevo.`}
         confirmText="Inhabilitar"
         variant="danger"
       />

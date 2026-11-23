@@ -151,8 +151,6 @@ export default function PuestoModal({
     if (result !== false) onClose()
   }
 
-  const plataformasExtra = plataformas.filter((p) => p.id !== cuenta?.id_plataforma)
-
   return (
     <Modal
       isOpen={isOpen}
@@ -240,7 +238,7 @@ export default function PuestoModal({
         {esCombo ? (
           <div className="space-y-3 rounded-xl border border-indigo-500/30 bg-indigo-500/5 p-3">
             <p className="text-xs text-gray-400">
-              Elige otras plataformas. Se copia PIN, fecha y precio; puedes cambiarlos en cada una.
+              Agrega más plataformas (puedes repetir la misma, por ejemplo otro Netflix). Se copia PIN, fecha y precio; puedes cambiarlos en cada una.
             </p>
             {extras.map((linea, index) => {
               const opciones = ordenarCuentasPorCupo(cuentasPorPlat[linea.id_plataforma] || [])
@@ -270,7 +268,7 @@ export default function PuestoModal({
                         className={fieldClass}
                       >
                         <option value="">Selecciona</option>
-                        {plataformasExtra.map((p) => (
+                        {plataformas.map((p) => (
                           <option key={p.id} value={p.id}>{p.nombre_plat}</option>
                         ))}
                       </select>

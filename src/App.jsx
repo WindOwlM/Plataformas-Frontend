@@ -43,7 +43,8 @@ function App() {
             }
           >
             <Route index element={<DashboardPage />} />
-            <Route path="cuentas" element={<CuentasPage />} />
+            <Route path="cuentas" element={<CuentasPage key="activas" />} />
+            <Route path="inhabilitadas" element={<CuentasPage key="inhabilitadas" soloInhabilitadas />} />
             <Route path="por-ubicar" element={<PorUbicarPage />} />
             <Route path="clientes" element={<ClientesPage />} />
             <Route path="catalogos" element={<CatalogosPage />} />
