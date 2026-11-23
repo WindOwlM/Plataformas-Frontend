@@ -57,11 +57,11 @@ export function mensajeRecordatorioHoy(item) {
   const cuentas = []
   const vistos = new Set()
 
-  function agregar(plataforma, correo, valor) {
+  function agregar(plataforma, correo, valor, id) {
     const plat = String(plataforma || '').trim()
     const mail = String(correo || '').trim()
     if (!plat || !mail) return
-    const clave = `${plat.toLowerCase()}|${mail.toLowerCase()}`
+    const clave = id || `${plat.toLowerCase()}|${mail.toLowerCase()}`
     if (vistos.has(clave)) return
     vistos.add(clave)
     cuentas.push({ plat, mail, valor: Number(valor) || 0 })
@@ -72,7 +72,14 @@ export function mensajeRecordatorioHoy(item) {
     : []
 
   if (filas.length > 0) {
-    for (const fila of filas) agregar(fila.plataforma, fila.correo, fila.valor ?? fila.valor_venta)
+    for (const fila of filas) {
+      agregar(
+        fila.plataforma,
+        fila.correo || (fila.por_ubicar ? 'Por ubicar' : ''),
+        fila.valor ?? fila.valor_venta,
+        fila.id_puesto || fila.id_por_ubicar
+      )
+    }
   } else if (item?.tipo === 'por_ubicar') {
     const plat = String(item?.plataforma || '').trim()
     const mail = String(item?.correo || '').trim()

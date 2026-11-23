@@ -231,6 +231,7 @@ export default function RenovarModal({ isOpen, item, onClose, onSaved }) {
           renovaciones: lineas.map((l) => ({
             id_puesto: l.id_puesto,
             id_cuenta: l.id_cuenta,
+            id_por_ubicar: l.id_por_ubicar || null,
             fecha: l.vencimiento_usuario,
           })),
         }),
@@ -244,7 +245,9 @@ export default function RenovarModal({ isOpen, item, onClose, onSaved }) {
       return
     }
 
-    const incompleta = lineas.find((l) => !l.id_plataforma || !l.id_cuenta || !l.vencimiento_usuario)
+    const incompleta = lineas.find(
+      (l) => !l.id_plataforma || (!l.id_cuenta && !l.id_por_ubicar) || !l.vencimiento_usuario
+    )
     if (incompleta) {
       setGuardando(false)
       setErrorLocal('Completa plataforma, cuenta y fecha en cada línea.')
@@ -259,6 +262,7 @@ export default function RenovarModal({ isOpen, item, onClose, onSaved }) {
         lineas: lineas.map((l) => ({
           id_puesto: l.id_puesto || null,
           id_cuenta: l.id_cuenta,
+          id_por_ubicar: l.id_por_ubicar || null,
           pin: l.pin,
           valor_venta: l.valor_venta,
           vencimiento_usuario: l.vencimiento_usuario,
@@ -295,9 +299,16 @@ export default function RenovarModal({ isOpen, item, onClose, onSaved }) {
                 <div>
                   <p className="text-sm text-white font-medium">
                     {linea.plataformaNombre || item?.plataforma || 'Cuenta'}
+                    {linea.id_por_ubicar ? (
+                      <span className="ml-2 inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium uppercase tracking-wide border bg-cyan-500/20 text-cyan-300 border-cyan-500/40">
+                        Por ubicar
+                      </span>
+                    ) : null}
                   </p>
                   {linea.correo ? (
-                    <p className="text-xs text-gray-400 truncate">{linea.correo}</p>
+                    <p className="text-xs text-gray-400 truncate">
+                      {linea.id_por_ubicar ? `Última cuenta: ${linea.correo}` : linea.correo}
+                    </p>
                   ) : null}
                 </div>
                 <label className="block text-sm font-medium text-gray-300">Nueva fecha</label>
@@ -393,7 +404,9 @@ export default function RenovarModal({ isOpen, item, onClose, onSaved }) {
                             disabled={!linea.id_plataforma}
                           >
                             <option value="">
-                              {linea.id_plataforma ? 'Cuenta con cupo' : 'Elige plataforma'}
+                              {linea.id_por_ubicar
+                                ? 'Sigue por ubicar'
+                                : linea.id_plataforma ? 'Cuenta con cupo' : 'Elige plataforma'}
                             </option>
                             {opciones.map((cuenta) => {
                               const esActual = cuenta.id === linea.id_cuenta
