@@ -160,3 +160,19 @@ export function mensajeDatosCuenta(cuenta, puesto) {
   )
   return lineas.join('\n')
 }
+
+// Mensaje con las cuentas de un proveedor (para nosotros, sin saludo):
+// agrupa los correos por plataforma.
+export function mensajeCuentasProveedor(cuentas) {
+  const porPlataforma = new Map()
+  for (const c of cuentas || []) {
+    const plat = String(c.plataforma || 'Sin plataforma').trim()
+    const correo = String(c.correo || c.nombre || '').trim()
+    if (!correo) continue
+    if (!porPlataforma.has(plat)) porPlataforma.set(plat, [])
+    porPlataforma.get(plat).push(correo)
+  }
+  return [...porPlataforma.entries()]
+    .map(([plat, correos]) => `${plat}:\n${correos.join('\n')}`)
+    .join('\n\n')
+}

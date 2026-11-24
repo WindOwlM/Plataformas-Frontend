@@ -1,10 +1,10 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Clock, CalendarClock, CircleAlert, Copy, ExternalLink, Loader2 } from 'lucide-react'
+import { Clock, CalendarClock, CircleAlert, Copy, ExternalLink, Loader2, Truck } from 'lucide-react'
 import { useApi } from '../../hooks/useApi'
 import StatCard from './StatCard'
 import Button from '../ui/Button'
-import { bucketMeta, formatFecha, mensajeRecordatorioHoy } from '../../lib/vencimientos'
+import { bucketMeta, formatFecha, mensajeCuentasProveedor, mensajeRecordatorioHoy } from '../../lib/vencimientos'
 import { claseFila } from '../../lib/filaSeleccion'
 import { clavePlataforma } from '../../lib/agruparCuentas'
 import RenovarModal from './RenovarModal'
@@ -127,6 +127,77 @@ const ItemRow = memo(function ItemRow({ item, onRenovar, onVerCuenta, selecciona
   )
 })
 
+// Todas las cuentas de un mismo proveedor (de cualquier plataforma) en una sola fila
+const GrupoProveedorRow = memo(function GrupoProveedorRow({ grupo, onRenovar, onVerCuenta, seleccionada }) {
+  const [copiado, setCopiado] = useState(false)
+
+  async function copiarMensaje() {
+    try {
+      await navigator.clipboard.writeText(mensajeCuentasProveedor(grupo.cuentas))
+      setCopiado(true)
+      window.setTimeout(() => setCopiado(false), 1600)
+    } catch {
+      setCopiado(false)
+    }
+  }
+
+  return (
+    <div className={claseFila(seleccionada, 'px-4 py-3.5 space-y-3 hover:bg-gray-700/40 transition-colors')}>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2 min-w-0">
+          <Truck className="h-4 w-4 text-blue-400 shrink-0" />
+          <p className="text-white font-medium break-words">{grupo.nombre}</p>
+          <span className={`inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium uppercase tracking-wide border ${tipoBadge.cuenta}`}>
+            {grupo.cuentas.length} {grupo.cuentas.length === 1 ? 'cuenta' : 'cuentas'}
+          </span>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <Button size="sm" variant="secondary" onClick={() => onRenovar(grupo)}>
+            <CalendarClock className="h-3.5 w-3.5" />
+            Renovar
+          </Button>
+          <Button size="sm" variant="secondary" onClick={copiarMensaje}>
+            <Copy className="h-3.5 w-3.5" />
+            {copiado ? 'Copiado' : 'Copiar mensaje'}
+          </Button>
+        </div>
+      </div>
+      <ul className="rounded-lg border border-gray-700 divide-y divide-gray-700/70 bg-gray-900/40">
+        {grupo.cuentas.map((c) => {
+          const meta = bucketMeta[c.bucket]
+          return (
+            <li key={c.id} className="px-3 py-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5">
+              <div className="min-w-0">
+                <p className="text-sm text-gray-200 break-all">{c.correo || c.nombre}</p>
+                <p className="text-xs text-gray-500">{c.plataforma}</p>
+                {c.notas ? (
+                  <p className="text-xs text-amber-200/90 mt-0.5 whitespace-pre-wrap break-words">{c.notas}</p>
+                ) : null}
+              </div>
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                <span className="text-xs text-gray-400">{formatFecha(c.fecha)}</span>
+                {meta ? (
+                  <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium border ${meta.badge}`}>
+                    {meta.title}
+                  </span>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => onVerCuenta(c)}
+                  className="p-1 rounded text-gray-500 hover:text-white"
+                  title="Ver cuenta"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
+})
+
 export default function VencimientosPanel() {
   const navigate = useNavigate()
   const { request, loading } = useApi()
@@ -163,7 +234,27 @@ export default function VencimientosPanel() {
       const combos = lista
         .filter((i) => i.tipo === 'combo')
         .sort((a, b) => String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es'))
-      const resto = lista.filter((i) => i.tipo !== 'combo')
+      const resto = lista.filter((i) => i.tipo !== 'combo' && i.tipo !== 'cuenta')
+      // Las cuentas (nuestras, del proveedor) van juntas al final, agrupadas por proveedor
+      const porProveedor = new Map()
+      for (const item of lista.filter((i) => i.tipo === 'cuenta')) {
+        const nombre = String(item.proveedor || '').trim() || 'Sin proveedor'
+        if (!porProveedor.has(nombre)) porProveedor.set(nombre, [])
+        porProveedor.get(nombre).push(item)
+      }
+      const proveedores = [...porProveedor.entries()]
+        .sort(([a], [b]) => a.localeCompare(b, 'es'))
+        .map(([nombre, cuentas]) => ({
+          id: `proveedor-${nombre}-${cuentas[0]?.bucket}`,
+          tipo: 'grupo_cuentas',
+          nombre,
+          bucket: cuentas[0]?.bucket,
+          cuentas: [...cuentas].sort((a, b) => {
+            const plat = clavePlataforma(a.plataforma).localeCompare(clavePlataforma(b.plataforma), 'es')
+            if (plat) return plat
+            return String(a.correo || '').localeCompare(String(b.correo || ''), 'es')
+          }),
+        }))
       const ordenados = [...resto].sort((a, b) => {
         const plat = clavePlataforma(a.plataforma).localeCompare(clavePlataforma(b.plataforma), 'es')
         if (plat) return plat
@@ -178,6 +269,7 @@ export default function VencimientosPanel() {
       return {
         combos,
         secciones: [...map.entries()].map(([plataforma, filas]) => ({ plataforma, filas })),
+        proveedores,
       }
     }
 
@@ -195,7 +287,11 @@ export default function VencimientosPanel() {
 
   const bucketsVisibles = filtro ? [filtro] : ['hoy', 'manana', 'vencida']
   const listaFiltrada = filtro
-    ? [...grupos[filtro].combos, ...grupos[filtro].secciones.flatMap((s) => s.filas)]
+    ? [
+        ...grupos[filtro].combos,
+        ...grupos[filtro].secciones.flatMap((s) => s.filas),
+        ...grupos[filtro].proveedores.flatMap((p) => p.cuentas),
+      ]
     : items
 
   return (
@@ -249,7 +345,9 @@ export default function VencimientosPanel() {
       ) : (
         bucketsVisibles.map((bucket) => {
           const grupo = grupos[bucket]
-          const total = grupo.combos.length + grupo.secciones.reduce((n, s) => n + s.filas.length, 0)
+          const total = grupo.combos.length
+            + grupo.secciones.reduce((n, s) => n + s.filas.length, 0)
+            + grupo.proveedores.reduce((n, p) => n + p.cuentas.length, 0)
           if (total === 0) return null
           return (
             <div key={bucket} className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
@@ -285,6 +383,27 @@ export default function VencimientosPanel() {
                   </div>
                 </div>
               ))}
+              {grupo.proveedores.length > 0 && (
+                <div className="border-t border-gray-700">
+                  <div className="px-4 py-2 bg-blue-500/10 text-xs font-semibold uppercase tracking-wide text-blue-300">
+                    Nuestras cuentas por proveedor
+                    <span className="ml-2 font-normal normal-case tracking-normal text-blue-300/80">
+                      {grupo.proveedores.reduce((n, p) => n + p.cuentas.length, 0)}
+                    </span>
+                  </div>
+                  <div className="divide-y divide-gray-700">
+                    {grupo.proveedores.map((g) => (
+                      <GrupoProveedorRow
+                        key={g.id}
+                        grupo={g}
+                        onRenovar={abrirRenovar}
+                        onVerCuenta={verCuenta}
+                        seleccionada={renovar?.id === g.id}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )
         })

@@ -61,6 +61,17 @@ function lineasIniciales(item) {
       }),
     ]
   }
+  if (item?.tipo === 'grupo_cuentas') {
+    return (item.cuentas || []).map((c) => ({
+      ...lineaDesdeAsignacion({
+        id_cuenta: c.id_cuenta,
+        plataforma: c.plataforma,
+        correo: c.correo,
+        fecha: c.fecha,
+      }),
+      incluir: true,
+    }))
+  }
   if (item?.tipo === 'cuenta') {
     return [
       lineaDesdeAsignacion({
@@ -119,7 +130,8 @@ export default function RenovarModal({ isOpen, item, onClose, onSaved }) {
   const [errorLocal, setErrorLocal] = useState('')
   const cuentasCargadas = useRef(new Set())
 
-  const esCuenta = item?.tipo === 'cuenta'
+  const esGrupo = item?.tipo === 'grupo_cuentas'
+  const esCuenta = item?.tipo === 'cuenta' || esGrupo
   const puedeEditarPlataformas = item?.tipo === 'usuario' || item?.tipo === 'combo'
   const puestosOrigen = useMemo(() => {
     if (!item) return []
@@ -209,6 +221,35 @@ export default function RenovarModal({ isOpen, item, onClose, onSaved }) {
 
   async function guardar() {
     if (!item) return
+    if (esGrupo) {
+      const elegidas = lineas.filter((l) => l.incluir)
+      if (elegidas.length === 0) {
+        setErrorLocal('Marca al menos una cuenta para renovar.')
+        return
+      }
+      if (elegidas.some((l) => !l.vencimiento_usuario)) {
+        setErrorLocal('Cada cuenta marcada debe tener una fecha.')
+        return
+      }
+      setErrorLocal('')
+      setGuardando(true)
+      const { error } = await request('/cuentas/vencimientos/fecha', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          tipo: 'cuentas',
+          fecha: elegidas[0].vencimiento_usuario,
+          renovaciones: elegidas.map((l) => ({ id_cuenta: l.id_cuenta, fecha: l.vencimiento_usuario })),
+        }),
+      })
+      setGuardando(false)
+      if (error) {
+        setErrorLocal(error)
+        return
+      }
+      onSaved()
+      return
+    }
+
     const incompletaFecha = lineas.find((l) => !l.vencimiento_usuario)
     if (incompletaFecha) {
       setErrorLocal('Cada cuenta debe tener una fecha.')
@@ -277,7 +318,9 @@ export default function RenovarModal({ isOpen, item, onClose, onSaved }) {
     onSaved()
   }
 
-  const subtitle = item?.tipo === 'combo'
+  const subtitle = esGrupo
+    ? `${item.nombre} · ${item.cuentas?.length || 0} cuentas`
+    : item?.tipo === 'combo'
     ? `${item.nombre} · ${(item.plataformas || []).join(' · ')}`
     : item?.tipo === 'por_ubicar'
       ? `${item.nombre} · Por ubicar`
@@ -295,7 +338,21 @@ export default function RenovarModal({ isOpen, item, onClose, onSaved }) {
         {!editarPlataformas ? (
           <div className="space-y-3">
             {lineas.map((linea) => (
-              <div key={linea.key} className="rounded-xl border border-gray-700 bg-gray-900/40 p-3 space-y-2">
+              <div
+                key={linea.key}
+                className={`rounded-xl border border-gray-700 bg-gray-900/40 p-3 space-y-2 ${esGrupo && !linea.incluir ? 'opacity-50' : ''}`}
+              >
+                {esGrupo ? (
+                  <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={!!linea.incluir}
+                      onChange={(e) => actualizarLinea(linea.key, { incluir: e.target.checked })}
+                      className="h-4 w-4 rounded border-gray-600 bg-gray-900"
+                    />
+                    Renovar esta cuenta
+                  </label>
+                ) : null}
                 <div>
                   <p className="text-sm text-white font-medium">
                     {linea.plataformaNombre || item?.plataforma || 'Cuenta'}
@@ -311,12 +368,16 @@ export default function RenovarModal({ isOpen, item, onClose, onSaved }) {
                     </p>
                   ) : null}
                 </div>
+                {esGrupo && !linea.incluir ? null : (
+                  <>
                 <label className="block text-sm font-medium text-gray-300">Nueva fecha</label>
                 <FechaConAtajos
                   value={linea.vencimiento_usuario}
                   actual={linea.fechaActual}
                   onChange={(fecha) => actualizarLinea(linea.key, { vencimiento_usuario: fecha })}
                 />
+                  </>
+                )}
               </div>
             ))}
             {puedeEditarPlataformas ? (
