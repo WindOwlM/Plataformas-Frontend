@@ -14,6 +14,7 @@ import AutocompleteField, {
 import Button from '../components/ui/Button'
 import QuitarClienteModal from '../components/dashboard/QuitarClienteModal'
 import CorreosModal from '../components/dashboard/CorreosModal'
+import { correoConectado } from '../components/correos/VisorCorreos'
 import { registrarError } from '../lib/errorLog'
 import ConfirmModal from '../components/ui/ConfirmModal'
 import {
@@ -747,7 +748,7 @@ export default function CuentasPage({ soloInhabilitadas = false }) {
                     onQuitar={handleQuitar}
                     onEliminarCuenta={setCuentaAEliminar}
                     onCorreos={setCorreoAbierto}
-                    correoVinculado={correosVinculados.has(String(cuenta.correo || '').toLowerCase())}
+                    correoVinculado={correoConectado(correosVinculados, cuenta.correo)}
                     onInhabilitar={setCuentaAInhabilitar}
                     onHabilitar={(c) => cambiarInhabilitada(c, false)}
                     onCortar={setPuestoACortar}
@@ -784,7 +785,7 @@ export default function CuentasPage({ soloInhabilitadas = false }) {
                         onQuitar={handleQuitar}
                         onEliminarCuenta={setCuentaAEliminar}
                         onCorreos={setCorreoAbierto}
-                        correoVinculado={correosVinculados.has(String(cuenta.correo || '').toLowerCase())}
+                        correoVinculado={correoConectado(correosVinculados, cuenta.correo)}
                         onInhabilitar={setCuentaAInhabilitar}
                         onHabilitar={(c) => cambiarInhabilitada(c, false)}
                         onCortar={setPuestoACortar}
@@ -881,11 +882,16 @@ export default function CuentasPage({ soloInhabilitadas = false }) {
         isOpen={!!correoAbierto}
         onClose={() => setCorreoAbierto(null)}
         correo={correoAbierto}
-        vinculado={!!correoAbierto && correosVinculados.has(String(correoAbierto).toLowerCase())}
+        vinculado={!!correoAbierto && correoConectado(correosVinculados, correoAbierto)}
         onCambio={cargarCorreosVinculados}
       />
     </div>
   )
+}
+
+// Solo las cuentas propias (correos tuyos) o las que ya tienen el correo conectado
+function puedeVerCorreos(cuenta, correoVinculado) {
+  return correoVinculado || /^propia/i.test(cuenta?.proveedor?.nombre_prov || '')
 }
 
 function BotonCopiarDatos({ cuenta, puesto }) {
@@ -1072,16 +1078,18 @@ const CuentaCard = memo(function CuentaCard({
         <Button size="sm" variant="secondary" onClick={() => onToggle(cuenta.id)} title={expanded ? 'Ocultar' : 'Desplegar'}>
           {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
         </Button>
-        <Button
-          size="sm"
-          variant={correoVinculado ? 'success' : 'secondary'}
-          onClick={() => onCorreos(cuenta.correo)}
-          disabled={!cuenta.correo}
-          title={correoVinculado ? 'Ver los correos de esta cuenta' : 'Conectar el correo para ver sus mensajes'}
-        >
-          <Mail className="h-3.5 w-3.5" />
-          Correos
-        </Button>
+        {puedeVerCorreos(cuenta, correoVinculado) ? (
+          <Button
+            size="sm"
+            variant={correoVinculado ? 'success' : 'secondary'}
+            onClick={() => onCorreos(cuenta.correo)}
+            disabled={!cuenta.correo}
+            title={correoVinculado ? 'Ver los correos de esta cuenta' : 'Conectar el correo para ver sus mensajes'}
+          >
+            <Mail className="h-3.5 w-3.5" />
+            Correos
+          </Button>
+        ) : null}
         <BotonInhabilitar cuenta={cuenta} onInhabilitar={onInhabilitar} onHabilitar={onHabilitar} />
         <Button size="sm" variant="danger" onClick={() => onEliminarCuenta(cuenta)} title="Eliminar cuenta">
           <Trash2 className="h-3.5 w-3.5" />
@@ -1244,16 +1252,18 @@ const FragmentRow = memo(function FragmentRow({
             <Button size="sm" variant="secondary" onClick={() => onToggle(cuenta.id)} title={expanded ? 'Ocultar' : 'Desplegar'}>
               {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
             </Button>
-            <Button
-              size="sm"
-              variant={correoVinculado ? 'success' : 'secondary'}
-              onClick={() => onCorreos(cuenta.correo)}
-              disabled={!cuenta.correo}
-              title={correoVinculado ? 'Ver los correos de esta cuenta' : 'Conectar el correo para ver sus mensajes'}
-            >
-              <Mail className="h-3.5 w-3.5" />
-              Correos
-            </Button>
+            {puedeVerCorreos(cuenta, correoVinculado) ? (
+              <Button
+                size="sm"
+                variant={correoVinculado ? 'success' : 'secondary'}
+                onClick={() => onCorreos(cuenta.correo)}
+                disabled={!cuenta.correo}
+                title={correoVinculado ? 'Ver los correos de esta cuenta' : 'Conectar el correo para ver sus mensajes'}
+              >
+                <Mail className="h-3.5 w-3.5" />
+                Correos
+              </Button>
+            ) : null}
             <BotonInhabilitar cuenta={cuenta} onInhabilitar={onInhabilitar} onHabilitar={onHabilitar} />
             <Button
               size="sm"

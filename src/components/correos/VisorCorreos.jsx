@@ -3,6 +3,19 @@ import { ChevronDown, ChevronRight, Loader2, RefreshCw, Search, Unplug } from 'l
 import Button from '../ui/Button'
 import { fieldClass } from '../ui/fieldStyles'
 
+// "usuario+algo@gmail.com" llega al buzón "usuario@gmail.com" (Gmail y Outlook ignoran el +)
+export function buzonDe(correo) {
+  const [usuario, dominio] = String(correo || '').trim().toLowerCase().split('@')
+  if (!dominio) return String(correo || '').trim().toLowerCase()
+  return `${usuario.split('+')[0]}@${dominio}`
+}
+
+// ¿Este correo (o su buzón sin el +) está conectado?
+export function correoConectado(vinculados, correo) {
+  const exacto = String(correo || '').trim().toLowerCase()
+  return vinculados.has(exacto) || vinculados.has(buzonDe(exacto))
+}
+
 export function proveedorSugerido(correo) {
   const dominio = String(correo || '').toLowerCase().split('@')[1] || ''
   if (/^(gmail|googlemail)\.com$/.test(dominio)) return 'google'
@@ -130,6 +143,7 @@ export default function VisorCorreos({ request, correo, onDesconectado, onRecone
   const [error, setError] = useState('')
   const [busqueda, setBusqueda] = useState('')
   const [abiertoId, setAbiertoId] = useState(null)
+  const [info, setInfo] = useState(null)
 
   const cargar = useCallback(async (query = '') => {
     if (!correo) return
@@ -147,6 +161,7 @@ export default function VisorCorreos({ request, correo, onDesconectado, onRecone
       return
     }
     const lista = data?.emails || []
+    setInfo(data?.alias ? { alias: data.alias, buzon: data.buzon } : null)
     setEmails(lista)
     setAbiertoId(lista[0]?.id || null)
   }, [correo, request])
@@ -166,6 +181,12 @@ export default function VisorCorreos({ request, correo, onDesconectado, onRecone
 
   return (
     <div className="space-y-3">
+      {info ? (
+        <p className="text-xs text-gray-400 break-all">
+          Mostrando solo los correos enviados a <span className="text-gray-200">{info.alias}</span>, que llegan al buzón{' '}
+          <span className="text-gray-200">{info.buzon}</span>.
+        </p>
+      ) : null}
       <form
         className="flex gap-2"
         onSubmit={(e) => {
