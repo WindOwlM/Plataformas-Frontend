@@ -9,6 +9,7 @@ import ClientesPage from './pages/ClientesPage'
 import CatalogosPage from './pages/CatalogosPage'
 import CorreosPage from './pages/CorreosPage'
 import PorUbicarPage from './pages/PorUbicarPage'
+import ErrorToasts from './components/ui/Toast'
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
@@ -31,6 +32,7 @@ function ProtectedRoute({ children }) {
 function App() {
   return (
     <AuthProvider>
+      <ErrorToasts />
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />

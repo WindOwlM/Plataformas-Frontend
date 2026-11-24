@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { Zap, LayoutDashboard, Mail, CreditCard, Users, Library, LogOut, MapPin, Ban } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
+import ErroresButton from './ErroresButton'
 
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, end: true },
@@ -36,6 +37,7 @@ export default function AppShell() {
           </div>
 
           <div className="flex items-center gap-3">
+            <ErroresButton />
             <span className="hidden sm:inline text-sm text-gray-400">
               {adminProfile?.nombre || 'Admin'}
             </span>

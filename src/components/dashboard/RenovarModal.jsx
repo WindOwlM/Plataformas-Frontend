@@ -352,7 +352,6 @@ export default function RenovarModal({ isOpen, item, onClose, onSaved }) {
                       estado: 'disponible',
                     })
                   }
-                  const actualesIds = new Set(lineas.map((l) => l.id_cuenta).filter(Boolean))
                   return (
                     <div
                       key={linea.key}
@@ -411,15 +410,13 @@ export default function RenovarModal({ isOpen, item, onClose, onSaved }) {
                             {opciones.map((cuenta) => {
                               const esActual = cuenta.id === linea.id_cuenta
                               const llena = cuentaNoAsignable(cuenta) && !esActual
-                              const ocupadaOtra = actualesIds.has(cuenta.id) && !esActual
                               return (
                                 <option
                                   key={cuenta.id}
                                   value={cuenta.id}
-                                  disabled={llena || ocupadaOtra}
+                                  disabled={llena}
                                 >
                                   {etiquetaOpcionCuenta(cuenta)}
-                                  {ocupadaOtra ? ' (ya elegida)' : ''}
                                 </option>
                               )
                             })}

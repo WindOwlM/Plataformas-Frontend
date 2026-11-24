@@ -2,6 +2,7 @@ import { useState, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { API_URL } from '../lib/apiConfig'
 import { useAuth } from './useAuth'
+import { registrarError } from '../lib/errorLog'
 
 export function useApi() {
   const { accessToken } = useAuth()
@@ -25,16 +26,27 @@ export function useApi() {
         throw new Error('No hay sesión activa. Inicia sesión primero.')
       }
 
-      const response = await fetch(`${API_URL}${endpoint}`, {
-        ...fetchOptions,
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-          ...headers,
-        },
-      })
+      let response
+      try {
+        response = await fetch(`${API_URL}${endpoint}`, {
+          ...fetchOptions,
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+            ...headers,
+          },
+        })
+      } catch {
+        throw new Error('No se pudo conectar con el servidor. Revisa tu internet o que el backend esté encendido.')
+      }
 
-      const data = await response.json()
+      let data = null
+      try {
+        data = await response.json()
+      } catch {
+        data = {}
+        if (response.ok) throw new Error('El servidor respondió algo que no se pudo leer.')
+      }
 
       if (!response.ok) {
         if (response.status === 403) {
@@ -48,7 +60,8 @@ export function useApi() {
 
       return { data, error: null }
     } catch (err) {
-      console.error('Error en request:', err.message)
+      const metodo = (fetchOptions.method || 'GET').toUpperCase()
+      registrarError({ mensaje: err.message, origen: `${metodo} ${endpoint}` })
       setError(err.message)
       return { data: null, error: err.message }
     } finally {
