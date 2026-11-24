@@ -52,8 +52,6 @@ function BotonInhabilitar({ cuenta, onInhabilitar, onHabilitar, labelClassName =
   )
 }
 
-const thFilterClass =
-  'mt-1.5 w-full max-w-[9.5rem] rounded-md border border-gray-700 bg-gray-800 px-1.5 py-1 text-[11px] font-medium normal-case tracking-normal text-gray-200'
 
 const filtroMovilClass =
   'w-full rounded-md border border-gray-700 bg-gray-800 px-2 py-2 text-sm font-medium text-gray-200'
@@ -92,8 +90,11 @@ function FiltrosBar({
   soloInhabilitadas,
 }) {
   const sortValue = sort.campo ? `${sort.campo}:${sort.dir}` : ''
+  const hayFiltro = !!(filtroProveedor || filtroEstado || filtroCorte)
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-3 lg:hidden border-b border-gray-700">
+    <div className="bg-gray-800 border border-gray-700 rounded-xl p-3 flex flex-col lg:flex-row lg:items-center gap-2">
+      <p className="text-xs font-medium uppercase tracking-wide text-gray-400 shrink-0 lg:mr-2">Filtros</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 flex-1">
       <select
         aria-label="Ordenar"
         value={sortValue}
@@ -105,7 +106,7 @@ function FiltrosBar({
           const [campo, dir] = e.target.value.split(':')
           setSort({ campo, dir })
         }}
-        className={filtroMovilClass}
+        className={`${filtroMovilClass} lg:hidden`}
       >
         <option value="">Orden combo</option>
         <option value="correo:asc">Correo A-Z</option>
@@ -148,68 +149,35 @@ function FiltrosBar({
         <option value="por_cortar">Por cortar</option>
         <option value="cortado">Cortado</option>
       </select>
+      </div>
+      {hayFiltro ? (
+        <button
+          type="button"
+          onClick={() => {
+            setFiltroProveedor('')
+            setFiltroEstado('')
+            setFiltroCorte('')
+          }}
+          className="shrink-0 rounded-md px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700"
+        >
+          Limpiar filtros
+        </button>
+      ) : null}
     </div>
   )
 }
 
-function EncabezadoTabla({
-  sort,
-  onSort,
-  filtroProveedor,
-  setFiltroProveedor,
-  proveedoresTabla,
-  filtroEstado,
-  setFiltroEstado,
-  filtroCorte,
-  setFiltroCorte,
-  soloInhabilitadas,
-}) {
+function EncabezadoTabla({ sort, onSort }) {
   return (
     <thead className="bg-gray-900/60 text-gray-400 text-xs uppercase tracking-wide">
       <tr>
         <ThCol label="Correo" campo="correo" sort={sort} onSort={onSort} />
         <ThCol label="Contraseña" campo="contrasena" sort={sort} onSort={onSort} />
-        <ThCol label="Proveedor" campo="proveedor" sort={sort} onSort={onSort}>
-          <select
-            aria-label="Filtrar proveedor"
-            value={filtroProveedor}
-            onChange={(e) => setFiltroProveedor(e.target.value)}
-            className={thFilterClass}
-          >
-            <option value="">Todos</option>
-            {proveedoresTabla.map((nombre) => (
-              <option key={nombre} value={nombre}>{nombre}</option>
-            ))}
-          </select>
-        </ThCol>
-        <ThCol label="Estado" campo="estado" sort={sort} onSort={onSort}>
-          {!soloInhabilitadas && (
-            <select
-              aria-label="Filtrar estado"
-              value={filtroEstado}
-              onChange={(e) => setFiltroEstado(e.target.value)}
-              className={thFilterClass}
-            >
-              <option value="">Todos</option>
-              <option value="disponible">Disponible</option>
-              <option value="llena">Llena</option>
-            </select>
-          )}
-        </ThCol>
+        <ThCol label="Proveedor" campo="proveedor" sort={sort} onSort={onSort} />
+        <ThCol label="Estado" campo="estado" sort={sort} onSort={onSort} />
         <ThCol label="Vence" campo="vence" sort={sort} onSort={onSort} />
         <ThCol label="Costo" campo="costo" sort={sort} onSort={onSort} />
-        <ThCol label="Puestos" campo="puestos" sort={sort} onSort={onSort}>
-          <select
-            aria-label="Filtrar corte"
-            value={filtroCorte}
-            onChange={(e) => setFiltroCorte(e.target.value)}
-            className={thFilterClass}
-          >
-            <option value="">Todos</option>
-            <option value="por_cortar">Por cortar</option>
-            <option value="cortado">Cortado</option>
-          </select>
-        </ThCol>
+        <ThCol label="Puestos" campo="puestos" sort={sort} onSort={onSort} />
         <th className="px-2 xl:px-3 py-2.5 font-medium"> </th>
       </tr>
     </thead>
@@ -543,18 +511,7 @@ export default function CuentasPage({ soloInhabilitadas = false }) {
   const colSpan = 8
   const hayFiltroColumna = !!(filtroEstado || filtroProveedor || filtroCorte)
 
-  const propsEncabezado = {
-    sort,
-    onSort,
-    filtroProveedor,
-    setFiltroProveedor,
-    proveedoresTabla,
-    filtroEstado,
-    setFiltroEstado,
-    filtroCorte,
-    setFiltroCorte,
-    soloInhabilitadas,
-  }
+  const propsEncabezado = { sort, onSort }
   const propsFiltrosBar = {
     sort,
     setSort,
@@ -681,12 +638,12 @@ export default function CuentasPage({ soloInhabilitadas = false }) {
             <p className="text-sm text-gray-300 font-medium">{tituloLista}</p>
             <p className="text-xs text-gray-500">{cuentasVista.length} cuenta{cuentasVista.length === 1 ? '' : 's'}</p>
           </div>
+          <FiltrosBar {...propsFiltrosBar} />
           {filasPorSeccion.length === 0 ? (
             <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
               <div className="px-4 py-3 border-b border-gray-700 flex items-center justify-between bg-gray-900/40">
                 <p className="text-sm text-white font-semibold">{plataformaNombre}</p>
               </div>
-              <FiltrosBar {...propsFiltrosBar} />
               <div className="hidden lg:block">
                 <table className="w-full text-sm text-left">
                   <EncabezadoTabla {...propsEncabezado} />
@@ -694,7 +651,7 @@ export default function CuentasPage({ soloInhabilitadas = false }) {
                     <tr>
                       <td colSpan={colSpan} className="px-3 py-10 text-center text-gray-400">
                         {hayFiltroColumna
-                          ? 'Ninguna cuenta coincide con ese filtro. Cambia el filtro de la columna para volver a verlas.'
+                          ? 'Ninguna cuenta coincide con ese filtro. Cambia o limpia los filtros para volver a verlas.'
                           : soloInhabilitadas
                             ? 'No hay cuentas inhabilitadas'
                             : `No hay cuentas para ${plataformaNombre}`}
@@ -719,7 +676,6 @@ export default function CuentasPage({ soloInhabilitadas = false }) {
                   {seccion.filas.length} cuenta{seccion.filas.length === 1 ? '' : 's'}
                 </span>
               </div>
-              <FiltrosBar {...propsFiltrosBar} />
               <div className="lg:hidden divide-y divide-gray-700">
                 {seccion.filas.map(({ cuenta, puestos, expanded }) => (
                   <CuentaCard
