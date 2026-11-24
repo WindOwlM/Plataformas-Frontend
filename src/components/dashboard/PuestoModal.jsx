@@ -35,10 +35,11 @@ export default function PuestoModal({
   const [cuentasPorPlat, setCuentasPorPlat] = useState({})
   const [clientes, setClientes] = useState([])
   const [isLoading, setIsLoading] = useState(false)
+  const [idGuardado, setIdGuardado] = useState(null)
   const { request } = useApi()
   const cuentasCargadas = useRef(new Set())
 
-  const esEdicion = !!puesto?.id
+  const esEdicion = !!(puesto?.id || idGuardado)
 
   useEffect(() => {
     if (isOpen) {
@@ -48,6 +49,7 @@ export default function PuestoModal({
       })
       cuentasCargadas.current = new Set()
       setCuentasPorPlat({})
+      setIdGuardado(null)
       if (puesto) {
         setIdUsuario(puesto.id_usuario || '')
         setPin(puesto.pin || '')
@@ -131,8 +133,8 @@ export default function PuestoModal({
       notas: notas.trim() || null,
     }
 
-    if (puesto?.id) {
-      puestoData.id = puesto.id
+    if (puesto?.id || idGuardado) {
+      puestoData.id = puesto?.id || idGuardado
     }
 
     const result = await onSubmit(
@@ -148,6 +150,13 @@ export default function PuestoModal({
       }))
     )
     setIsLoading(false)
+    if (result && typeof result === 'object') {
+      // Guardado parcial: el principal ya existe; dejar solo las extras que fallaron.
+      const pendientes = new Set(result.fallidas.map((i) => extrasValidas[i]?.key))
+      setIdGuardado(result.idPuesto || null)
+      setExtras((prev) => prev.filter((linea) => pendientes.has(linea.key)))
+      return
+    }
     if (result !== false) onClose()
   }
 

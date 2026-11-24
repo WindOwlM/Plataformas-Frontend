@@ -12,6 +12,7 @@ import Button from '../ui/Button'
 import Modal from '../ui/Modal'
 import { fieldClass } from '../ui/fieldStyles'
 import { maxPuestosDe } from '../../lib/cuentaEstado'
+import { puestoCortado, puestoPorCortar } from '../../lib/vencimientos'
 import ClienteQuickCreate from './ClienteQuickCreate'
 
 export default function CuentaModal({
@@ -114,9 +115,16 @@ export default function CuentaModal({
     [plataformas, idPlataforma]
   )
 
+  // Los puestos en rojo (cortados) o vencidos no ocupan cupo.
+  const ocupanCupo = useMemo(
+    () => puestos.filter((p) => !puestoCortado(p) && !puestoPorCortar(p)).length,
+    [puestos]
+  )
+
   const agregarPuesto = useCallback(() => {
     setPuestos((prev) => {
-      if (prev.length >= maxPuestos) return prev
+      const ocupan = prev.filter((p) => !puestoCortado(p) && !puestoPorCortar(p)).length
+      if (ocupan >= maxPuestos) return prev
       return [
         ...prev,
         { id_usuario: '', pin: '', vencimiento_usuario: '', es_combo: false, valor_venta: '', notas: '' },
@@ -262,9 +270,9 @@ export default function CuentaModal({
         <section className="rounded-xl border border-gray-700 bg-gray-900/40 p-4">
           <div className="flex items-center justify-between mb-4">
             <h4 className="text-sm font-semibold text-gray-300">
-              Puestos / perfiles ({puestos.length}/{maxPuestos})
+              Puestos / perfiles ({ocupanCupo}/{maxPuestos})
             </h4>
-            <Button type="button" size="sm" onClick={agregarPuesto} disabled={puestos.length >= maxPuestos}>
+            <Button type="button" size="sm" onClick={agregarPuesto} disabled={ocupanCupo >= maxPuestos}>
               <Plus className="h-4 w-4" />
               Agregar puesto
             </Button>

@@ -315,16 +315,21 @@ export default function CuentasPage({ soloInhabilitadas = false }) {
         })
     if (result.error) return false
 
-    for (const extra of extras) {
+    // El puesto principal ya quedó guardado: si alguna plataforma extra falla,
+    // se avisa cuáles faltan para no volver a crear el principal al reintentar.
+    const idPuesto = result.data?.puesto?.id || puestoData.id
+    const fallidas = []
+    for (const [index, extra] of extras.entries()) {
       if (!extra.id_cuenta) continue
       const extraResult = await request(`/cuentas/${extra.id_cuenta}/puestos`, {
         method: 'POST',
         body: JSON.stringify(extra),
       })
-      if (extraResult.error) return false
+      if (extraResult.error) fallidas.push(index)
     }
 
     await cargarCuentas()
+    if (fallidas.length > 0) return { idPuesto, fallidas }
     return true
   }, [puestoCuenta, request, cargarCuentas])
 
