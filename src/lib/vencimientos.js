@@ -133,3 +133,30 @@ export function classifyFecha(fecha) {
   if (key < today) return 'vencida'
   return null
 }
+
+// "2026-12-22" -> "22 de diciembre"
+export function fechaCorteTexto(key) {
+  const dt = parseFechaLocal(key)
+  if (!dt) return ''
+  const mes = dt.toLocaleDateString('es-CO', { month: 'long' })
+  return `${dt.getDate()} de ${mes}`
+}
+
+// Mensaje con los datos de la cuenta que se le envía al cliente
+export function mensajeDatosCuenta(cuenta, puesto) {
+  const plataforma = String(cuenta?.plataforma?.nombre_plat || 'Cuenta').trim().toUpperCase()
+  const corte = fechaCorteTexto(puesto?.vencimiento_usuario)
+  const lineas = [
+    `${plataforma} 🎬`,
+    cuenta?.correo || '',
+    `Contraseña: ${cuenta?.contrasena || ''}`,
+  ]
+  if (puesto?.pin) lineas.push(`Pin: ${puesto.pin}`)
+  if (corte) lineas.push(`Corte: ${corte}`)
+  lineas.push(
+    '⚠️ Esta es una cuenta de uso compartido, por ende, al adquirir tu pantalla aceptas las políticas para el uso de la misma 👇. ',
+    '🚫 Usar los datos y reproducción en 2 dispositivos, cambio de contraseña y/o modificación de nombre o PIN de la pantalla genera expulsión definitiva de la cuenta sin devolución de dinero.',
+    'NOTA: Para reporte de novedades, debe enviar foto de la falla y datos de la cuenta para la respectiva revisión',
+  )
+  return lineas.join('\n')
+}

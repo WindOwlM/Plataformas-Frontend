@@ -1,6 +1,6 @@
 import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowDown, ArrowRightLeft, ArrowUp, ArrowUpDown, Ban, ChevronDown, ChevronRight, Copy, Loader2, MonitorPlay, Pencil, Plus, Scissors, Trash2, Undo2, UserPlus } from 'lucide-react'
+import { ArrowDown, ArrowRightLeft, Check, ClipboardCopy, ArrowUp, ArrowUpDown, Ban, ChevronDown, ChevronRight, Copy, Loader2, MonitorPlay, Pencil, Plus, Scissors, Trash2, Undo2, UserPlus } from 'lucide-react'
 import { useApi } from '../hooks/useApi'
 import { fieldClass } from '../components/ui/fieldStyles'
 import PuestoModal from '../components/dashboard/PuestoModal'
@@ -24,7 +24,7 @@ import { esComboPuesto, filtrarCuentasTabla, seccionesPorPlataforma } from '../l
 import FechaBadge from '../components/ui/FechaBadge'
 import CorteBadges, { CorteBadgePuesto } from '../components/ui/CorteBadges'
 import { claseFila } from '../lib/filaSeleccion'
-import { puestoCortado } from '../lib/vencimientos'
+import { mensajeDatosCuenta, puestoCortado } from '../lib/vencimientos'
 import { rutaCuentaDestino } from '../lib/rutaCuenta'
 
 function estadoBadge(estado) {
@@ -839,6 +839,29 @@ export default function CuentasPage({ soloInhabilitadas = false }) {
   )
 }
 
+function BotonCopiarDatos({ cuenta, puesto }) {
+  const [copiado, setCopiado] = useState(false)
+  async function copiar() {
+    try {
+      await navigator.clipboard.writeText(mensajeDatosCuenta(cuenta, puesto))
+      setCopiado(true)
+      setTimeout(() => setCopiado(false), 1500)
+    } catch {
+      setCopiado(false)
+    }
+  }
+  return (
+    <button
+      type="button"
+      onClick={copiar}
+      className={`p-1.5 rounded-lg ${copiado ? 'text-emerald-400 bg-emerald-400/10' : 'text-gray-400 hover:text-sky-400 hover:bg-sky-400/10'}`}
+      title={copiado ? '¡Copiado!' : 'Copiar mensaje con los datos de la cuenta'}
+    >
+      {copiado ? <Check className="h-4 w-4" /> : <ClipboardCopy className="h-4 w-4" />}
+    </button>
+  )
+}
+
 function AccionesPuesto({
   cuenta,
   puesto,
@@ -878,6 +901,7 @@ function AccionesPuesto({
   }
   return (
     <div className="inline-flex flex-wrap items-center justify-end gap-1">
+      <BotonCopiarDatos cuenta={cuenta} puesto={puesto} />
       <button
         type="button"
         onClick={() => onCortar({ cuenta, puesto })}
