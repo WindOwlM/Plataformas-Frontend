@@ -1,108 +1,130 @@
-import { useState } from 'react'
-import { Mail, Search, Loader2 } from 'lucide-react'
-import { useEmail } from '../hooks/useEmail'
-import EmailBody from '../components/EmailBody'
-import Button from '../components/ui/Button'
-import { fieldClass } from '../components/ui/fieldStyles'
-import Alert from '../components/ui/Alert'
+import { useCallback, useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { Loader2, Mail } from 'lucide-react'
+import { useApi } from '../hooks/useApi'
+import { registrarError } from '../lib/errorLog'
+import VisorCorreos, { BotonesConectar, iniciarConexionCorreo } from '../components/correos/VisorCorreos'
+
+const RUTA = '/dashboard/correos'
+
+function IconoProveedor({ provider }) {
+  return (
+    <span
+      className={`h-2.5 w-2.5 rounded-full shrink-0 ${provider === 'google' ? 'bg-red-500' : 'bg-sky-500'}`}
+      title={provider === 'google' ? 'Gmail' : 'Outlook'}
+    />
+  )
+}
 
 export default function CorreosPage() {
-  const { emails, loading, error, provider, fetchEmails } = useEmail()
-  const [searchEmail, setSearchEmail] = useState('')
+  const { request } = useApi()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [vinculados, setVinculados] = useState([])
+  const [cargando, setCargando] = useState(true)
+  const [seleccionado, setSeleccionado] = useState(null)
+  const [aviso, setAviso] = useState('')
 
-  const handleSearch = (e) => {
-    e.preventDefault()
-    fetchEmails(searchEmail.trim(), true)
-  }
+  const cargar = useCallback(async () => {
+    const { data } = await request('/correos/vinculados', { silent: true })
+    const lista = Array.isArray(data) ? [...data].sort((a, b) => a.correo.localeCompare(b.correo)) : []
+    setVinculados(lista)
+    setCargando(false)
+    return lista
+  }, [request])
 
-  const formatDate = (dateString) => {
-    if (!dateString) return 'Fecha desconocida'
-    const date = new Date(dateString)
-    return date.toLocaleString('es-ES', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  }
+  useEffect(() => {
+    cargar()
+  }, [cargar])
+
+  // Vuelta desde Google/Microsoft después de conectar un correo
+  useEffect(() => {
+    const conectado = searchParams.get('correo_conectado')
+    const fallo = searchParams.get('correo_error')
+    if (!conectado && !fallo) return
+    if (fallo) {
+      registrarError({ mensaje: `No se pudo conectar el correo: ${fallo}`, origen: 'Conectar correo' })
+    } else {
+      setAviso(`✅ ${conectado} conectado correctamente`)
+      setTimeout(() => setAviso(''), 5000)
+      cargar().then(() => setSeleccionado(conectado))
+    }
+    setSearchParams({}, { replace: true })
+  }, [searchParams, setSearchParams, cargar])
 
   return (
-    <section className="bg-gray-800 rounded-xl border border-gray-700 p-6">
-      <div className="flex items-center gap-2 mb-4">
-        <Mail className="h-5 w-5 text-indigo-400" />
-        <h2 className="text-lg font-semibold text-white">Buscar correos</h2>
-        <span className="text-xs text-gray-500 ml-auto hidden sm:inline">Gmail y Outlook</span>
-      </div>
+    <div className="space-y-6">
+      {aviso ? (
+        <div className="rounded-xl border border-green-700 bg-green-900/30 p-3 text-sm text-green-300">{aviso}</div>
+      ) : null}
 
-      <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-3 mb-6">
-        <input
-          type="email"
-          value={searchEmail}
-          onChange={(e) => setSearchEmail(e.target.value)}
-          placeholder="ejemplo@gmail.com o ejemplo@outlook.com"
-          className={`flex-1 ${fieldClass}`}
-          required
-        />
-        <Button type="submit" disabled={loading}>
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-          {loading ? 'Buscando...' : 'Buscar'}
-        </Button>
-      </form>
-
-      {error && <Alert type="error" message={error} />}
-
-      {provider && emails.length > 0 && (
-        <div className="mb-4 mt-4">
-          <span
-            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium border ${
-              provider === 'outlook'
-                ? 'bg-blue-900/50 text-blue-300 border-blue-700'
-                : 'bg-red-900/50 text-red-300 border-red-700'
-            }`}
-          >
-            {provider === 'outlook' ? 'Outlook' : 'Gmail'}
-          </span>
-        </div>
-      )}
-
-      <div className="space-y-4 mt-4">
-        {emails.map((msg) => (
-          <div
-            key={msg.id}
-            className="bg-gray-900 rounded-lg border border-gray-700 p-5 hover:border-gray-600 transition-colors"
-          >
-            <div className="flex flex-col gap-1 mb-3">
-              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
-                <span className="text-indigo-400 font-medium text-sm truncate">
-                  De: {msg.from}
-                </span>
-                <span className="text-gray-500 text-xs whitespace-nowrap">
-                  {formatDate(msg.date)}
-                </span>
-              </div>
-              {msg.to && (
-                <span className="text-emerald-400 text-xs">Para: {msg.to}</span>
-              )}
-            </div>
-            <div className="text-gray-300 text-sm leading-relaxed max-h-96 overflow-y-auto pr-2 custom-scrollbar">
-              <EmailBody content={msg.body} />
-            </div>
+      <section className="bg-gray-800 rounded-xl border border-gray-700 p-4 sm:p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div className="flex items-center gap-2">
+            <Mail className="h-5 w-5 text-indigo-400" />
+            <h2 className="text-lg font-semibold text-white">Correos conectados</h2>
+            {!cargando ? <span className="text-xs text-gray-500">({vinculados.length})</span> : null}
           </div>
-        ))}
-      </div>
+          <BotonesConectar request={request} ruta={RUTA} sugerido="microsoft" compacto />
+        </div>
 
-      {!loading && !error && emails.length === 0 && searchEmail && (
-        <p className="text-gray-500 text-sm text-center py-8">
-          No se encontraron correos para esta cuenta.
-        </p>
-      )}
+        {cargando ? (
+          <div className="flex items-center gap-2 text-sm text-gray-400 py-4">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Cargando…
+          </div>
+        ) : vinculados.length === 0 ? (
+          <div className="rounded-xl border-2 border-dashed border-gray-700 p-8 text-center">
+            <p className="text-gray-400">Aún no hay correos conectados.</p>
+            <p className="mt-1 text-sm text-gray-500">Pulsa + Outlook o + Gmail arriba.</p>
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {vinculados.map((v) => {
+              const activo = seleccionado === v.correo
+              return (
+                <button
+                  key={v.correo}
+                  type="button"
+                  onClick={() => setSeleccionado(v.correo)}
+                  className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-left transition ${
+                    activo
+                      ? 'border-indigo-500 bg-indigo-500/15 text-white ring-2 ring-indigo-500/30'
+                      : 'border-gray-700 bg-gray-900/50 text-gray-300 hover:bg-gray-700/50'
+                  }`}
+                >
+                  <IconoProveedor provider={v.provider} />
+                  <span className="min-w-0">
+                    <span className="block text-sm font-medium break-all">{v.correo}</span>
+                    {v.plataformas?.length ? (
+                      <span className="block text-[11px] text-gray-500">{v.plataformas.join(' · ')}</span>
+                    ) : null}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </section>
 
-      {!loading && !error && emails.length === 0 && !searchEmail && (
-        <p className="text-gray-500 text-sm text-center py-8">
-          Ingresa un correo para buscar mensajes recientes.
-        </p>
-      )}
-    </section>
+      {seleccionado ? (
+        <section className="bg-gray-800 rounded-xl border border-gray-700 p-4 sm:p-6 space-y-3">
+          <h3 className="text-white font-semibold break-all">Últimos correos de {seleccionado}</h3>
+          <VisorCorreos
+            key={seleccionado}
+            request={request}
+            correo={seleccionado}
+            onReconectar={async () => {
+              const v = vinculados.find((x) => x.correo === seleccionado)
+              const provider = v?.provider || 'microsoft'
+              await iniciarConexionCorreo(request, { provider, correo: seleccionado, ruta: RUTA })
+            }}
+            onDesconectado={() => {
+              setSeleccionado(null)
+              cargar()
+            }}
+          />
+        </section>
+      ) : null}
+    </div>
   )
 }

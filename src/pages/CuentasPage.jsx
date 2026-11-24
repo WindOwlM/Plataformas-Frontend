@@ -1,6 +1,6 @@
 import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowDown, ArrowRightLeft, Check, ClipboardCopy, ArrowUp, ArrowUpDown, Ban, ChevronDown, ChevronRight, Copy, Loader2, MonitorPlay, Pencil, Plus, Scissors, Trash2, Undo2, UserPlus } from 'lucide-react'
+import { ArrowDown, ArrowRightLeft, Check, ClipboardCopy, Mail, ArrowUp, ArrowUpDown, Ban, ChevronDown, ChevronRight, Copy, Loader2, MonitorPlay, Pencil, Plus, Scissors, Trash2, Undo2, UserPlus } from 'lucide-react'
 import { useApi } from '../hooks/useApi'
 import { fieldClass } from '../components/ui/fieldStyles'
 import PuestoModal from '../components/dashboard/PuestoModal'
@@ -13,6 +13,8 @@ import AutocompleteField, {
 } from '../components/ui/AutocompleteField'
 import Button from '../components/ui/Button'
 import QuitarClienteModal from '../components/dashboard/QuitarClienteModal'
+import CorreosModal from '../components/dashboard/CorreosModal'
+import { registrarError } from '../lib/errorLog'
 import ConfirmModal from '../components/ui/ConfirmModal'
 import {
   cuentaInhabilitada,
@@ -185,7 +187,7 @@ function EncabezadoTabla({ sort, onSort }) {
 }
 
 export default function CuentasPage({ soloInhabilitadas = false }) {
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const { request, loading } = useApi()
   const [plataformas, setPlataformas] = useState([])
@@ -209,6 +211,8 @@ export default function CuentasPage({ soloInhabilitadas = false }) {
   const [cuentaAEliminar, setCuentaAEliminar] = useState(null)
   const [cuentaAInhabilitar, setCuentaAInhabilitar] = useState(null)
   const [puestoACortar, setPuestoACortar] = useState(null)
+  const [correosVinculados, setCorreosVinculados] = useState(() => new Set())
+  const [correoAbierto, setCorreoAbierto] = useState(null)
   const [sort, setSort] = useState({ campo: '', dir: 'asc' })
   const [filtroEstado, setFiltroEstado] = useState('')
   const [filtroProveedor, setFiltroProveedor] = useState('')
@@ -241,6 +245,39 @@ export default function CuentasPage({ soloInhabilitadas = false }) {
       if (data) setClientes(data)
     })
   }, [request])
+
+  const cargarCorreosVinculados = useCallback(async () => {
+    const { data } = await request('/correos/vinculados', { silent: true })
+    if (Array.isArray(data)) setCorreosVinculados(new Set(data.map((c) => String(c.correo).toLowerCase())))
+  }, [request])
+
+  useEffect(() => {
+    cargarCorreosVinculados()
+  }, [cargarCorreosVinculados])
+
+  // Vuelta desde Google/Microsoft después de conectar un correo
+  useEffect(() => {
+    const conectado = searchParams.get('correo_conectado')
+    const fallo = searchParams.get('correo_error')
+    if (!conectado && !fallo) return
+    const pedido = searchParams.get('correo_pedido')
+    if (fallo) {
+      registrarError({ mensaje: `No se pudo conectar el correo: ${fallo}`, origen: 'Conectar correo' })
+    } else {
+      if (pedido) {
+        registrarError({
+          mensaje: `Conectaste ${conectado}, pero la cuenta es ${pedido}. Vuelve a conectar entrando con ${pedido}.`,
+          origen: 'Conectar correo',
+        })
+      }
+      cargarCorreosVinculados().then(() => setCorreoAbierto(pedido || conectado))
+    }
+    const next = new URLSearchParams(searchParams)
+    next.delete('correo_conectado')
+    next.delete('correo_error')
+    next.delete('correo_pedido')
+    setSearchParams(next, { replace: true })
+  }, [searchParams, setSearchParams, cargarCorreosVinculados])
 
   useEffect(() => {
     const plat = searchParams.get('plataforma')
@@ -709,6 +746,8 @@ export default function CuentasPage({ soloInhabilitadas = false }) {
                     onEditarPuesto={abrirEditarPuesto}
                     onQuitar={handleQuitar}
                     onEliminarCuenta={setCuentaAEliminar}
+                    onCorreos={setCorreoAbierto}
+                    correoVinculado={correosVinculados.has(String(cuenta.correo || '').toLowerCase())}
                     onInhabilitar={setCuentaAInhabilitar}
                     onHabilitar={(c) => cambiarInhabilitada(c, false)}
                     onCortar={setPuestoACortar}
@@ -744,6 +783,8 @@ export default function CuentasPage({ soloInhabilitadas = false }) {
                         onEditarPuesto={abrirEditarPuesto}
                         onQuitar={handleQuitar}
                         onEliminarCuenta={setCuentaAEliminar}
+                        onCorreos={setCorreoAbierto}
+                        correoVinculado={correosVinculados.has(String(cuenta.correo || '').toLowerCase())}
                         onInhabilitar={setCuentaAInhabilitar}
                         onHabilitar={(c) => cambiarInhabilitada(c, false)}
                         onCortar={setPuestoACortar}
@@ -834,6 +875,14 @@ export default function CuentasPage({ soloInhabilitadas = false }) {
         message={`¿Dejar a ${puestoACortar?.puesto?.usuario?.nombre || 'este cliente'} como recordatorio en ${puestoACortar?.cuenta?.correo || 'esta cuenta'}? El puesto se libera y quedará pendiente de borrarlo del perfil.`}
         confirmText="Cortar"
         variant="danger"
+      />
+
+      <CorreosModal
+        isOpen={!!correoAbierto}
+        onClose={() => setCorreoAbierto(null)}
+        correo={correoAbierto}
+        vinculado={!!correoAbierto && correosVinculados.has(String(correoAbierto).toLowerCase())}
+        onCambio={cargarCorreosVinculados}
       />
     </div>
   )
@@ -950,6 +999,8 @@ const CuentaCard = memo(function CuentaCard({
   onEditarPuesto,
   onQuitar,
   onEliminarCuenta,
+  onCorreos,
+  correoVinculado,
   onInhabilitar,
   onHabilitar,
   onCortar,
@@ -1020,6 +1071,16 @@ const CuentaCard = memo(function CuentaCard({
         </Button>
         <Button size="sm" variant="secondary" onClick={() => onToggle(cuenta.id)} title={expanded ? 'Ocultar' : 'Desplegar'}>
           {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+        </Button>
+        <Button
+          size="sm"
+          variant={correoVinculado ? 'success' : 'secondary'}
+          onClick={() => onCorreos(cuenta.correo)}
+          disabled={!cuenta.correo}
+          title={correoVinculado ? 'Ver los correos de esta cuenta' : 'Conectar el correo para ver sus mensajes'}
+        >
+          <Mail className="h-3.5 w-3.5" />
+          Correos
         </Button>
         <BotonInhabilitar cuenta={cuenta} onInhabilitar={onInhabilitar} onHabilitar={onHabilitar} />
         <Button size="sm" variant="danger" onClick={() => onEliminarCuenta(cuenta)} title="Eliminar cuenta">
@@ -1102,6 +1163,8 @@ const FragmentRow = memo(function FragmentRow({
   onEditarPuesto,
   onQuitar,
   onEliminarCuenta,
+  onCorreos,
+  correoVinculado,
   onInhabilitar,
   onHabilitar,
   onCortar,
@@ -1180,6 +1243,16 @@ const FragmentRow = memo(function FragmentRow({
             </Button>
             <Button size="sm" variant="secondary" onClick={() => onToggle(cuenta.id)} title={expanded ? 'Ocultar' : 'Desplegar'}>
               {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+            </Button>
+            <Button
+              size="sm"
+              variant={correoVinculado ? 'success' : 'secondary'}
+              onClick={() => onCorreos(cuenta.correo)}
+              disabled={!cuenta.correo}
+              title={correoVinculado ? 'Ver los correos de esta cuenta' : 'Conectar el correo para ver sus mensajes'}
+            >
+              <Mail className="h-3.5 w-3.5" />
+              Correos
             </Button>
             <BotonInhabilitar cuenta={cuenta} onInhabilitar={onInhabilitar} onHabilitar={onHabilitar} />
             <Button
