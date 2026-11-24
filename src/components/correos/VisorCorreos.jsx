@@ -35,8 +35,8 @@ function documentoCorreo(body) {
   const contenido = esHtml
     ? body
     : `<pre style="white-space:pre-wrap;font-family:inherit;margin:0">${escaparHtml(body || '(Sin contenido)')}</pre>`
-  return `<!doctype html><html><head><meta charset="utf-8"><base target="_blank">
-<style>body{margin:0;padding:12px;font-family:system-ui,sans-serif;font-size:14px;color:#111;background:#fff;word-break:break-word}img{max-width:100%;height:auto}</style>
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><base target="_blank">
+<style>body{margin:0;padding:12px;font-family:system-ui,sans-serif;font-size:14px;color:#111;background:#fff;word-break:break-word;overflow-wrap:anywhere}img{max-width:100%!important;height:auto!important}table{max-width:100%!important}td,th{word-break:break-word}</style>
 </head><body>${contenido}</body></html>`
 }
 
@@ -71,7 +71,7 @@ function CorreoItem({ email, abierto, onToggle }) {
           title={email.subject}
           sandbox="allow-popups allow-popups-to-escape-sandbox"
           srcDoc={documentoCorreo(email.body)}
-          className="w-full h-96 bg-white border-t border-gray-700"
+          className="w-full h-[60dvh] sm:h-96 bg-white border-t border-gray-700"
         />
       ) : null}
     </div>

@@ -99,10 +99,17 @@ export default function ErroresButton() {
                 {errores.map((e) => (
                   <li key={e.id} className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2">
                     <p className="text-sm font-medium text-red-300 break-words">{e.mensaje}</p>
-                    <p className="mt-0.5 text-xs text-gray-500 break-all">
-                      {formatHora(e.fecha)}
-                      {e.origen ? ` · ${e.origen}` : ''}
-                    </p>
+                    <p className="mt-0.5 text-xs text-gray-500">{formatHora(e.fecha)}</p>
+                    {e.origen || e.detalle ? (
+                      <details className="mt-1">
+                        <summary className="cursor-pointer text-[11px] text-gray-500 hover:text-gray-300">
+                          Detalle técnico (para soporte)
+                        </summary>
+                        <p className="mt-1 font-mono text-[11px] text-gray-400 break-all whitespace-pre-wrap">
+                          {[e.origen, e.detalle].filter(Boolean).join('\n')}
+                        </p>
+                      </details>
+                    ) : null}
                   </li>
                 ))}
               </ul>

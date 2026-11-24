@@ -22,11 +22,19 @@ export default function LoginForm() {
     const { data, error } = await signIn(email, password)
 
     if (error) {
+      const msg = String(error.message || '')
       setError(
-        error.message === 'Invalid login credentials'
+        /invalid login credentials/i.test(msg)
           ? 'Correo o contraseña incorrectos'
-          : error.message
+          : /email not confirmed/i.test(msg)
+            ? 'Este correo aún no está confirmado. Revisa tu bandeja de entrada.'
+            : /fetch|network/i.test(msg)
+              ? 'No se pudo conectar. Revisa tu internet e inténtalo de nuevo.'
+              : /rate limit|too many/i.test(msg)
+                ? 'Demasiados intentos. Espera un momento e inténtalo de nuevo.'
+                : 'No se pudo iniciar sesión. Inténtalo de nuevo.'
       )
+      console.error('Error al iniciar sesión:', msg)
     } else if (data?.user) {
       navigate('/dashboard')
     }
