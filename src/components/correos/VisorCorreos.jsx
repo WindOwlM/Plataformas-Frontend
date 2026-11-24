@@ -144,15 +144,16 @@ export default function VisorCorreos({ request, correo, onDesconectado, onRecone
   const [busqueda, setBusqueda] = useState('')
   const [abiertoId, setAbiertoId] = useState(null)
   const [info, setInfo] = useState(null)
+  const [soloAlias, setSoloAlias] = useState(false)
 
-  const cargar = useCallback(async (query = '') => {
+  const cargar = useCallback(async (query = '', filtrar = false) => {
     if (!correo) return
     setCargando(true)
     setError('')
     const { data, error: err } = await request('/correos/leer', {
       method: 'POST',
       silent: true,
-      body: JSON.stringify({ correo, query, max: 5 }),
+      body: JSON.stringify({ correo, query, max: 5, soloAlias: filtrar }),
     })
     setCargando(false)
     if (err) {
@@ -161,7 +162,7 @@ export default function VisorCorreos({ request, correo, onDesconectado, onRecone
       return
     }
     const lista = data?.emails || []
-    setInfo(data?.alias ? { alias: data.alias, buzon: data.buzon } : null)
+    setInfo(data?.esAlias ? { buzon: data.buzon } : null)
     setEmails(lista)
     setAbiertoId(lista[0]?.id || null)
   }, [correo, request])
@@ -170,7 +171,8 @@ export default function VisorCorreos({ request, correo, onDesconectado, onRecone
     setEmails([])
     setBusqueda('')
     setAbiertoId(null)
-    cargar('')
+    setSoloAlias(false)
+    cargar('', false)
   }, [cargar])
 
   async function desconectar() {
@@ -182,16 +184,29 @@ export default function VisorCorreos({ request, correo, onDesconectado, onRecone
   return (
     <div className="space-y-3">
       {info ? (
-        <p className="text-xs text-gray-400 break-all">
-          Mostrando solo los correos enviados a <span className="text-gray-200">{info.alias}</span>, que llegan al buzón{' '}
-          <span className="text-gray-200">{info.buzon}</span>.
-        </p>
+        <div className="space-y-1">
+          <p className="text-xs text-gray-400 break-all">
+            Los correos de esta cuenta llegan al buzón <span className="text-gray-200">{info.buzon}</span>.
+          </p>
+          <label className="inline-flex items-center gap-2 text-xs text-gray-300 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={soloAlias}
+              onChange={(e) => {
+                setSoloAlias(e.target.checked)
+                cargar(busqueda.trim(), e.target.checked)
+              }}
+              className="h-4 w-4 rounded border-gray-600 bg-gray-900"
+            />
+            <span className="break-all">Mostrar solo los enviados a {correo}</span>
+          </label>
+        </div>
       ) : null}
       <form
         className="flex gap-2"
         onSubmit={(e) => {
           e.preventDefault()
-          cargar(busqueda.trim())
+          cargar(busqueda.trim(), soloAlias)
         }}
       >
         <input
