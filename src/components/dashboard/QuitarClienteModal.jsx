@@ -16,6 +16,7 @@ export default function QuitarClienteModal({
   correo,
   cuentaId,
   plataformaId,
+  soloReubicar = false,
 }) {
   const { request } = useApi()
   const [paso, setPaso] = useState('menu')
@@ -26,11 +27,11 @@ export default function QuitarClienteModal({
 
   useEffect(() => {
     if (!isOpen) return
-    setPaso('menu')
+    setPaso(soloReubicar ? 'reubicar' : 'menu')
     setIdDestino('')
     setError('')
     setCuentas([])
-  }, [isOpen])
+  }, [isOpen, soloReubicar])
 
   useEffect(() => {
     if (!isOpen || paso !== 'reubicar' || !plataformaId) return
@@ -62,7 +63,8 @@ export default function QuitarClienteModal({
         <div className="space-y-4">
           <p className="text-sm text-gray-400">
             Mueve a <span className="text-white font-medium">{nombre || 'este cliente'}</span>
-            {correo ? ` desde ${correo}` : ''} a otra cuenta de la misma plataforma. Se mantiene PIN, fecha y precio.
+            {correo ? ` desde ${correo}` : ''} a otra cuenta de la misma plataforma. Se mantiene PIN, fecha, precio y notas.
+            {soloReubicar ? ' Se elimina de la cuenta actual.' : ''}
           </p>
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">Cuenta destino *</label>
@@ -87,8 +89,8 @@ export default function QuitarClienteModal({
           ) : null}
           {error ? <p className="text-sm text-red-400">{error}</p> : null}
           <div className="flex gap-2">
-            <Button type="button" variant="secondary" onClick={() => setPaso('menu')} className="flex-1">
-              Atrás
+            <Button type="button" variant="secondary" onClick={() => (soloReubicar ? onClose() : setPaso('menu'))} className="flex-1">
+              {soloReubicar ? 'Cancelar' : 'Atrás'}
             </Button>
             <Button type="button" onClick={confirmarReubicar} isLoading={guardando} disabled={!idDestino} className="flex-1">
               Reubicar

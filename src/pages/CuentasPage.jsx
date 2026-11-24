@@ -1,6 +1,6 @@
 import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowDown, ArrowUp, ArrowUpDown, Ban, ChevronDown, ChevronRight, Copy, Loader2, MonitorPlay, Pencil, Plus, Scissors, Trash2, UserPlus } from 'lucide-react'
+import { ArrowDown, ArrowRightLeft, ArrowUp, ArrowUpDown, Ban, ChevronDown, ChevronRight, Copy, Loader2, MonitorPlay, Pencil, Plus, Scissors, Trash2, Undo2, UserPlus } from 'lucide-react'
 import { useApi } from '../hooks/useApi'
 import { fieldClass } from '../components/ui/fieldStyles'
 import PuestoModal from '../components/dashboard/PuestoModal'
@@ -347,13 +347,22 @@ export default function CuentasPage({ soloInhabilitadas = false }) {
     if (!error) await cargarCuentas()
   }, [request, cargarCuentas])
 
+  const deshacerCortado = useCallback(async (cuenta, puesto) => {
+    if (!cuenta?.id || !puesto?.id) return
+    const { error } = await request(`/cuentas/${cuenta.id}/puestos/${puesto.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ estado: 'activa' }),
+    })
+    if (!error) await cargarCuentas()
+  }, [request, cargarCuentas])
+
   const reubicarCliente = useCallback(async (idCuentaDestino, destino) => {
     if (!quitar?.cuenta?.id || !quitar?.puesto?.id || !idCuentaDestino) return false
     const { error } = await request(
       `/cuentas/${quitar.cuenta.id}/puestos/${quitar.puesto.id}/reubicar`,
       {
         method: 'POST',
-        body: JSON.stringify({ id_cuenta: idCuentaDestino }),
+        body: JSON.stringify({ id_cuenta: idCuentaDestino, borrar_origen: !!quitar.soloReubicar }),
       }
     )
     if (error) return false
@@ -414,6 +423,10 @@ export default function CuentasPage({ soloInhabilitadas = false }) {
 
   const handleQuitar = useCallback((cuenta, puesto) => {
     setQuitar({ cuenta, puesto })
+  }, [])
+
+  const handleReubicar = useCallback((cuenta, puesto) => {
+    setQuitar({ cuenta, puesto, soloReubicar: true })
   }, [])
 
   const marcarCortado = useCallback(async () => {
@@ -700,6 +713,8 @@ export default function CuentasPage({ soloInhabilitadas = false }) {
                     onHabilitar={(c) => cambiarInhabilitada(c, false)}
                     onCortar={setPuestoACortar}
                     onBorrarDefinitivo={borrarDefinitivo}
+                    onDeshacerCortado={deshacerCortado}
+                    onReubicar={handleReubicar}
                     seleccionada={
                       cuentaEditando?.id === cuenta.id
                       || puestoCuenta?.id === cuenta.id
@@ -733,6 +748,8 @@ export default function CuentasPage({ soloInhabilitadas = false }) {
                         onHabilitar={(c) => cambiarInhabilitada(c, false)}
                         onCortar={setPuestoACortar}
                         onBorrarDefinitivo={borrarDefinitivo}
+                        onDeshacerCortado={deshacerCortado}
+                        onReubicar={handleReubicar}
                         seleccionada={
                           cuentaEditando?.id === cuenta.id
                           || puestoCuenta?.id === cuenta.id
@@ -786,6 +803,7 @@ export default function CuentasPage({ soloInhabilitadas = false }) {
         correo={quitar?.cuenta?.correo}
         cuentaId={quitar?.cuenta?.id}
         plataformaId={quitar?.cuenta?.id_plataforma}
+        soloReubicar={!!quitar?.soloReubicar}
       />
 
       <ConfirmModal
@@ -829,19 +847,33 @@ function AccionesPuesto({
   onEditarPuesto,
   onQuitar,
   onBorrarDefinitivo,
+  onDeshacerCortado,
+  onReubicar,
 }) {
   if (recordatorio) {
     return (
-      <Button
-        size="sm"
-        variant="danger"
-        onClick={() => onBorrarDefinitivo(cuenta, puesto)}
-        title="Ya lo quitaste del perfil: borrar recordatorio"
-        className="w-full sm:w-auto"
-      >
-        <Trash2 className="h-3.5 w-3.5" />
-        Borrar de esta cuenta
-      </Button>
+      <div className="flex flex-wrap items-center justify-end gap-1">
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => onDeshacerCortado(cuenta, puesto)}
+          title="Me equivoqué: devolver el cliente a la cuenta"
+          className="w-full sm:w-auto"
+        >
+          <Undo2 className="h-3.5 w-3.5" />
+          Deshacer
+        </Button>
+        <Button
+          size="sm"
+          variant="danger"
+          onClick={() => onBorrarDefinitivo(cuenta, puesto)}
+          title="Ya lo quitaste del perfil: borrar recordatorio"
+          className="w-full sm:w-auto"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+          Borrar de esta cuenta
+        </Button>
+      </div>
     )
   }
   return (
@@ -861,6 +893,14 @@ function AccionesPuesto({
         title="Editar PIN, precio, vencimiento y notas"
       >
         <Pencil className="h-4 w-4" />
+      </button>
+      <button
+        type="button"
+        onClick={() => onReubicar(cuenta, puesto)}
+        className="p-1.5 text-gray-400 hover:text-emerald-400 hover:bg-emerald-400/10 rounded-lg"
+        title="Reubicar a otra cuenta de la misma plataforma"
+      >
+        <ArrowRightLeft className="h-4 w-4" />
       </button>
       <button
         type="button"
@@ -890,6 +930,8 @@ const CuentaCard = memo(function CuentaCard({
   onHabilitar,
   onCortar,
   onBorrarDefinitivo,
+  onDeshacerCortado,
+  onReubicar,
   seleccionada,
   puestoSeleccionadoId,
 }) {
@@ -1010,6 +1052,8 @@ const CuentaCard = memo(function CuentaCard({
                     onEditarPuesto={onEditarPuesto}
                     onQuitar={onQuitar}
                     onBorrarDefinitivo={onBorrarDefinitivo}
+                    onDeshacerCortado={onDeshacerCortado}
+                    onReubicar={onReubicar}
                   />
                 </div>
               )
@@ -1038,6 +1082,8 @@ const FragmentRow = memo(function FragmentRow({
   onHabilitar,
   onCortar,
   onBorrarDefinitivo,
+  onDeshacerCortado,
+  onReubicar,
   seleccionada,
   puestoSeleccionadoId,
 }) {
@@ -1199,6 +1245,8 @@ const FragmentRow = memo(function FragmentRow({
                               onEditarPuesto={onEditarPuesto}
                               onQuitar={onQuitar}
                               onBorrarDefinitivo={onBorrarDefinitivo}
+                              onDeshacerCortado={onDeshacerCortado}
+                              onReubicar={onReubicar}
                             />
                           </td>
                         </tr>
