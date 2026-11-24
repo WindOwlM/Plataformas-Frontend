@@ -4,11 +4,13 @@ import { useApi } from '../../hooks/useApi'
 import ProveedorModal from './ProveedorModal'
 import Button from '../ui/Button'
 import { claseFila } from '../../lib/filaSeleccion'
+import AccesoProveedor from '../catalogos/AccesoProveedor'
 
 export default function ProveedoresList() {
   const [proveedores, setProveedores] = useState([])
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [proveedorEditando, setProveedorEditando] = useState(null)
+  const [accesos, setAccesos] = useState({})
   const { request } = useApi()
 
   useEffect(() => {
@@ -18,6 +20,10 @@ export default function ProveedoresList() {
   async function cargarProveedores() {
     const { data } = await request('/catalogos/proveedores')
     if (data) setProveedores(data)
+    const { data: listaAccesos } = await request('/catalogos/proveedores/accesos', { silent: true })
+    if (Array.isArray(listaAccesos)) {
+      setAccesos(Object.fromEntries(listaAccesos.map((a) => [a.id_proveedor, a])))
+    }
   }
 
   async function crearProveedor(payload) {
@@ -77,15 +83,16 @@ export default function ProveedoresList() {
           proveedores.map((p) => (
             <div
               key={p.id}
-              className={claseFila(isModalOpen && proveedorEditando?.id === p.id, 'px-4 py-3.5 flex items-center justify-between hover:bg-gray-700/50 transition-colors group')}
+              className={claseFila(isModalOpen && proveedorEditando?.id === p.id, 'px-4 py-3.5 flex items-start justify-between gap-2 hover:bg-gray-700/50 transition-colors group')}
             >
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <span className="text-white">{p.nombre_prov}</span>
                 {Array.isArray(p.celulares) && p.celulares.filter(Boolean).length > 0 ? (
                   <p className="text-xs text-gray-400 mt-0.5 break-all">
                     {p.celulares.filter(Boolean).join(' · ')}
                   </p>
                 ) : null}
+                <AccesoProveedor acceso={accesos[p.id]} />
               </div>
               <button
                 type="button"
