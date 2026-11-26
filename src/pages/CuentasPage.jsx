@@ -400,7 +400,7 @@ export default function CuentasPage({ soloInhabilitadas = false }) {
       `/cuentas/${quitar.cuenta.id}/puestos/${quitar.puesto.id}/reubicar`,
       {
         method: 'POST',
-        body: JSON.stringify({ id_cuenta: idCuentaDestino, borrar_origen: !!quitar.soloReubicar }),
+        body: JSON.stringify({ id_cuenta: idCuentaDestino, borrar_origen: false }),
       }
     )
     if (error) return false

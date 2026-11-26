@@ -64,7 +64,7 @@ export default function QuitarClienteModal({
           <p className="text-sm text-gray-400">
             Mueve a <span className="text-white font-medium">{nombre || 'este cliente'}</span>
             {correo ? ` desde ${correo}` : ''} a otra cuenta de la misma plataforma. Se mantiene PIN, fecha, precio y notas.
-            {soloReubicar ? ' Se elimina de la cuenta actual.' : ''}
+            {' En la cuenta actual queda el recordatorio para borrarlo del perfil.'}
           </p>
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">Cuenta destino *</label>
