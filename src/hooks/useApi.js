@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { API_URL } from '../lib/apiConfig'
 import { useAuth } from './useAuth'
 import { registrarError } from '../lib/errorLog'
+import { mostrarAviso } from '../lib/avisos'
 
 // mensaje: lo que ve la persona. detalle: lo técnico, solo para el registro de errores
 function errorConDetalle(mensaje, detalle) {
@@ -68,6 +69,9 @@ export function useApi() {
         }
         throw errorConDetalle(data.error || 'No se pudo completar la acción. Inténtalo de nuevo.', detalle)
       }
+
+      // Se guardó, pero el servidor pide revisar algo (aviso amarillo)
+      if (data && typeof data.aviso === 'string') mostrarAviso(data.aviso)
 
       return { data, error: null }
     } catch (err) {

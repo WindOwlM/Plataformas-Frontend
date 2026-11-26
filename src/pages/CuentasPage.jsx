@@ -853,7 +853,7 @@ export default function CuentasPage({ soloInhabilitadas = false }) {
         onClose={() => setCuentaAEliminar(null)}
         onConfirm={eliminarCuenta}
         title="Eliminar cuenta"
-        message={`¿Eliminar ${cuentaAEliminar?.correo}? Se quitarán también los clientes asignados a esta cuenta.`}
+        message={`¿Eliminar ${cuentaAEliminar?.correo}? Solo se puede si la cuenta ya no tiene clientes ni recordatorios para borrar.`}
         confirmText="Eliminar"
         variant="danger"
       />
@@ -1036,7 +1036,7 @@ const CuentaCard = memo(function CuentaCard({
                 <Copy className="h-3.5 w-3.5" />
               </button>
             ) : null}
-            <CorteBadges puestos={puestos} />
+            <CorteBadges puestos={puestos} cuenta={cuenta} />
           </div>
           <p className="text-sm text-gray-400 mt-1 break-all">
             {cuenta.contrasena || 'Sin contraseña'}
@@ -1202,7 +1202,7 @@ const FragmentRow = memo(function FragmentRow({
                 <Copy className="h-3.5 w-3.5" />
               </button>
             ) : null}
-            <CorteBadges puestos={puestos} />
+            <CorteBadges puestos={puestos} cuenta={cuenta} />
           </span>
         </td>
         <td className="px-2 xl:px-3 py-2">
