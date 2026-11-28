@@ -138,7 +138,10 @@ export function classifyFecha(fecha) {
 // Número listo para WhatsApp: solo dígitos y con el 57 de Colombia si falta.
 // Devuelve '' si no hay número.
 export function numeroWhatsApp(telefono) {
-  let digitos = String(telefono || '').replace(/\D/g, '')
+  const texto = String(telefono || '')
+  // Un usuario de WhatsApp (@nombre) no es un número: no inventar uno con sus dígitos
+  if (/[@a-zA-Z]/.test(texto)) return ''
+  let digitos = texto.replace(/\D/g, '')
   if (digitos.length === 10 && digitos.startsWith('3')) digitos = `57${digitos}`
   return digitos
 }
