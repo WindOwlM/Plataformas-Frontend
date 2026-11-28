@@ -1,6 +1,6 @@
-import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowDown, ArrowRightLeft, Check, ClipboardCopy, Mail, ArrowUp, ArrowUpDown, Ban, ChevronDown, ChevronRight, Copy, Loader2, MonitorPlay, Pencil, Plus, Scissors, Trash2, Undo2, UserPlus } from 'lucide-react'
+import { Loader2, MonitorPlay, Plus } from 'lucide-react'
 import { useApi } from '../hooks/useApi'
 import { fieldClass } from '../components/ui/fieldStyles'
 import PuestoModal from '../components/dashboard/PuestoModal'
@@ -17,68 +17,14 @@ import CorreosModal from '../components/dashboard/CorreosModal'
 import { correoConectado } from '../components/correos/VisorCorreos'
 import { registrarError } from '../lib/errorLog'
 import ConfirmModal from '../components/ui/ConfirmModal'
-import {
-  cuentaInhabilitada,
-  cuentaLlena,
-  etiquetaEstado,
-  puestosDe,
-} from '../lib/cuentaEstado'
-import { esComboPuesto, filtrarCuentasTabla, seccionesPorPlataforma } from '../lib/agruparCuentas'
-import FechaBadge from '../components/ui/FechaBadge'
-import CorteBadges, { CorteBadgePuesto } from '../components/ui/CorteBadges'
-import { claseFila } from '../lib/filaSeleccion'
-import { mensajeDatosCuenta, puestoCortado } from '../lib/vencimientos'
+import { cuentaInhabilitada, puestosDe } from '../lib/cuentaEstado'
+import { filtrarCuentasTabla, seccionesPorPlataforma } from '../lib/agruparCuentas'
 import { rutaCuentaDestino } from '../lib/rutaCuenta'
-
-function estadoBadge(estado) {
-  const colors = {
-    disponible: 'bg-green-500/20 text-green-400 border-green-500/30',
-    llena: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-    vendida: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-    inhabilitada: 'bg-gray-500/25 text-gray-300 border-gray-400/40',
-  }
-  return colors[estado] || colors.disponible
-}
-
-function BotonInhabilitar({ cuenta, onInhabilitar, onHabilitar, labelClassName = '' }) {
-  const off = cuentaInhabilitada(cuenta)
-  return (
-    <Button
-      size="sm"
-      variant={off ? 'secondary' : 'danger'}
-      onClick={() => (off ? onHabilitar(cuenta) : onInhabilitar(cuenta))}
-      title={off ? 'Habilitar cuenta' : 'Inhabilitar cuenta'}
-    >
-      <Ban className="h-3.5 w-3.5" />
-      <span className={labelClassName}>{off ? 'Habilitar' : 'Inhabilitar'}</span>
-    </Button>
-  )
-}
-
+import { useDeudas } from '../lib/deudas'
+import CuentaFila from '../components/cuentas/CuentaFila'
 
 const filtroMovilClass =
   'w-full rounded-md border border-gray-700 bg-gray-800 px-2 py-2 text-sm font-medium text-gray-200'
-
-function ThCol({ label, campo, sort, onSort, children }) {
-  const active = sort.campo === campo
-  return (
-    <th className="px-2 xl:px-3 py-2.5 font-medium align-top">
-      <button
-        type="button"
-        onClick={() => onSort(campo)}
-        className={`inline-flex items-center gap-1 uppercase tracking-wide hover:text-white ${active ? 'text-white' : ''}`}
-      >
-        {label}
-        {active ? (
-          sort.dir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
-        ) : (
-          <ArrowUpDown className="h-3 w-3 opacity-40" />
-        )}
-      </button>
-      {children}
-    </th>
-  )
-}
 
 function FiltrosBar({
   sort,
@@ -97,7 +43,7 @@ function FiltrosBar({
   return (
     <div className="bg-gray-800 border border-gray-700 rounded-xl p-3 flex flex-col lg:flex-row lg:items-center gap-2">
       <p className="text-xs font-medium uppercase tracking-wide text-gray-400 shrink-0 lg:mr-2">Filtros</p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 flex-1">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 flex-1">
       <select
         aria-label="Ordenar"
         value={sortValue}
@@ -109,15 +55,18 @@ function FiltrosBar({
           const [campo, dir] = e.target.value.split(':')
           setSort({ campo, dir })
         }}
-        className={`${filtroMovilClass} lg:hidden`}
+        className={filtroMovilClass}
       >
-        <option value="">Orden combo</option>
+        <option value="">Orden: combos primero</option>
         <option value="correo:asc">Correo A-Z</option>
         <option value="correo:desc">Correo Z-A</option>
         <option value="vence:asc">Vence más próximo</option>
         <option value="vence:desc">Vence más lejano</option>
         <option value="estado:asc">Disponible primero</option>
         <option value="estado:desc">Llena primero</option>
+        <option value="puestos:asc">Más puestos libres</option>
+        <option value="costo:desc">Costo más alto</option>
+        <option value="costo:asc">Costo más bajo</option>
       </select>
       <select
         aria-label="Filtrar proveedor"
@@ -170,27 +119,11 @@ function FiltrosBar({
   )
 }
 
-function EncabezadoTabla({ sort, onSort }) {
-  return (
-    <thead className="bg-gray-900/60 text-gray-400 text-xs uppercase tracking-wide">
-      <tr>
-        <ThCol label="Correo" campo="correo" sort={sort} onSort={onSort} />
-        <ThCol label="Contraseña" campo="contrasena" sort={sort} onSort={onSort} />
-        <ThCol label="Proveedor" campo="proveedor" sort={sort} onSort={onSort} />
-        <ThCol label="Estado" campo="estado" sort={sort} onSort={onSort} />
-        <ThCol label="Vence" campo="vence" sort={sort} onSort={onSort} />
-        <ThCol label="Costo" campo="costo" sort={sort} onSort={onSort} />
-        <ThCol label="Puestos" campo="puestos" sort={sort} onSort={onSort} />
-        <th className="px-2 xl:px-3 py-2.5 font-medium"> </th>
-      </tr>
-    </thead>
-  )
-}
-
 export default function CuentasPage({ soloInhabilitadas = false }) {
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const { request, loading } = useApi()
+  const { deudas } = useDeudas(request)
   const [plataformas, setPlataformas] = useState([])
   // En la vista de inhabilitadas se muestran todas las plataformas por defecto
   const [plataformaId, setPlataformaId] = useState(soloInhabilitadas ? 'todas' : '')
@@ -489,6 +422,8 @@ export default function CuentasPage({ soloInhabilitadas = false }) {
     if (!error) await cargarCuentas()
   }, [request, cargarCuentas])
 
+  const habilitarCuenta = useCallback((cuenta) => cambiarInhabilitada(cuenta, false), [cambiarInhabilitada])
+
   const confirmarInhabilitar = useCallback(async () => {
     await cambiarInhabilitada(cuentaAInhabilitar, true)
   }, [cambiarInhabilitada, cuentaAInhabilitar])
@@ -548,14 +483,6 @@ export default function CuentasPage({ soloInhabilitadas = false }) {
     return [...set].sort((a, b) => a.localeCompare(b, 'es'))
   }, [cuentas])
 
-  const onSort = useCallback((campo) => {
-    setSort((prev) => {
-      if (prev.campo !== campo) return { campo, dir: 'asc' }
-      if (prev.dir === 'asc') return { campo, dir: 'desc' }
-      return { campo: '', dir: 'asc' }
-    })
-  }, [])
-
   const tituloLista = clienteNombre
     ? `Cuentas de ${clienteNombre}`
     : correoFiltro || correoQuery
@@ -564,10 +491,8 @@ export default function CuentasPage({ soloInhabilitadas = false }) {
   const sinFiltro = !plataformaId && !clienteId && !correoFiltro && !correoQuery && !usuarioQuery
 
   const secciones = useMemo(() => seccionesPorPlataforma(cuentasVista, sort), [cuentasVista, sort])
-  const colSpan = 8
   const hayFiltroColumna = !!(filtroEstado || filtroProveedor || filtroCorte)
 
-  const propsEncabezado = { sort, onSort }
   const propsFiltrosBar = {
     sort,
     setSort,
@@ -700,47 +625,33 @@ export default function CuentasPage({ soloInhabilitadas = false }) {
               <div className="px-4 py-3 border-b border-gray-700 flex items-center justify-between bg-gray-900/40">
                 <p className="text-sm text-white font-semibold">{plataformaNombre}</p>
               </div>
-              <div className="hidden lg:block">
-                <table className="w-full text-sm text-left">
-                  <EncabezadoTabla {...propsEncabezado} />
-                  <tbody>
-                    <tr>
-                      <td colSpan={colSpan} className="px-3 py-10 text-center text-gray-400">
-                        {hayFiltroColumna
-                          ? 'Ninguna cuenta coincide con ese filtro. Cambia o limpia los filtros para volver a verlas.'
-                          : soloInhabilitadas
-                            ? 'No hay cuentas inhabilitadas'
-                            : `No hay cuentas para ${plataformaNombre}`}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <p className="lg:hidden px-3 py-10 text-center text-gray-400">
+              <p className="px-3 py-10 text-center text-gray-400">
                 {hayFiltroColumna
-                  ? 'Ninguna cuenta coincide con ese filtro. Cambia el filtro para volver a verlas.'
+                  ? 'Ninguna cuenta coincide con ese filtro. Cambia o limpia los filtros para volver a verlas.'
                   : soloInhabilitadas
                     ? 'No hay cuentas inhabilitadas'
                     : `No hay cuentas para ${plataformaNombre}`}
               </p>
             </div>
           ) : filasPorSeccion.map((seccion) => (
-            <div key={seccion.id} className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
-              <div className="px-4 py-3 border-b border-gray-700 flex items-center justify-between bg-gray-900/40">
+            <div key={seccion.id} className="bg-gray-800 rounded-xl border border-gray-700">
+              <div className="px-4 py-3 border-b border-gray-700 flex items-center justify-between bg-gray-900/40 rounded-t-xl">
                 <p className="text-sm text-white font-semibold">{seccion.nombre}</p>
                 <span className="text-xs text-gray-500">
                   {seccion.filas.length} cuenta{seccion.filas.length === 1 ? '' : 's'}
                 </span>
               </div>
-              <div className="lg:hidden divide-y divide-gray-700">
+              <div className="divide-y divide-gray-700">
                 {seccion.filas.map(({ cuenta, puestos, expanded }) => (
-                  <CuentaCard
+                  <CuentaFila
                     key={cuenta.id}
                     cuenta={cuenta}
                     puestos={puestos}
                     expanded={expanded}
                     cuentas={cuentas}
                     clienteId={clienteId}
+                    deudas={deudas}
+                    soloInhabilitadas={soloInhabilitadas}
                     onToggle={toggleExpand}
                     onAsignar={abrirAsignar}
                     onEditarCuenta={abrirEditarCuenta}
@@ -750,7 +661,7 @@ export default function CuentasPage({ soloInhabilitadas = false }) {
                     onCorreos={setCorreoAbierto}
                     correoVinculado={correoConectado(correosVinculados, cuenta.correo)}
                     onInhabilitar={setCuentaAInhabilitar}
-                    onHabilitar={(c) => cambiarInhabilitada(c, false)}
+                    onHabilitar={habilitarCuenta}
                     onCortar={setPuestoACortar}
                     onBorrarDefinitivo={borrarDefinitivo}
                     onDeshacerCortado={deshacerCortado}
@@ -764,45 +675,6 @@ export default function CuentasPage({ soloInhabilitadas = false }) {
                     puestoSeleccionadoId={puestoEditando?.id || quitar?.puesto?.id}
                   />
                 ))}
-              </div>
-              <div className="hidden lg:block overflow-x-auto">
-                <table className="w-full text-sm text-left">
-                  <EncabezadoTabla {...propsEncabezado} />
-                  <tbody className="divide-y divide-gray-700">
-                    {seccion.filas.map(({ cuenta, puestos, expanded }) => (
-                      <FragmentRow
-                        key={cuenta.id}
-                        cuenta={cuenta}
-                        puestos={puestos}
-                        expanded={expanded}
-                        cuentas={cuentas}
-                        clienteId={clienteId}
-                        colSpan={colSpan}
-                        onToggle={toggleExpand}
-                        onAsignar={abrirAsignar}
-                        onEditarCuenta={abrirEditarCuenta}
-                        onEditarPuesto={abrirEditarPuesto}
-                        onQuitar={handleQuitar}
-                        onEliminarCuenta={setCuentaAEliminar}
-                        onCorreos={setCorreoAbierto}
-                        correoVinculado={correoConectado(correosVinculados, cuenta.correo)}
-                        onInhabilitar={setCuentaAInhabilitar}
-                        onHabilitar={(c) => cambiarInhabilitada(c, false)}
-                        onCortar={setPuestoACortar}
-                        onBorrarDefinitivo={borrarDefinitivo}
-                        onDeshacerCortado={deshacerCortado}
-                        onReubicar={handleReubicar}
-                        seleccionada={
-                          cuentaEditando?.id === cuenta.id
-                          || puestoCuenta?.id === cuenta.id
-                          || cuentaAEliminar?.id === cuenta.id
-                          || searchParams.get('cuenta') === cuenta.id
-                        }
-                        puestoSeleccionadoId={puestoEditando?.id || quitar?.puesto?.id}
-                      />
-                    ))}
-                  </tbody>
-                </table>
               </div>
             </div>
           ))}
@@ -888,484 +760,3 @@ export default function CuentasPage({ soloInhabilitadas = false }) {
     </div>
   )
 }
-
-// Solo las cuentas propias (correos tuyos) o las que ya tienen el correo conectado
-function puedeVerCorreos(cuenta, correoVinculado) {
-  return correoVinculado || /^propia/i.test(cuenta?.proveedor?.nombre_prov || '')
-}
-
-function BotonCopiarDatos({ cuenta, puesto }) {
-  const [copiado, setCopiado] = useState(false)
-  async function copiar() {
-    try {
-      await navigator.clipboard.writeText(mensajeDatosCuenta(cuenta, puesto))
-      setCopiado(true)
-      setTimeout(() => setCopiado(false), 1500)
-    } catch {
-      setCopiado(false)
-    }
-  }
-  return (
-    <button
-      type="button"
-      onClick={copiar}
-      className={`p-1.5 rounded-lg ${copiado ? 'text-emerald-400 bg-emerald-400/10' : 'text-gray-400 hover:text-sky-400 hover:bg-sky-400/10'}`}
-      title={copiado ? '¡Copiado!' : 'Copiar mensaje con los datos de la cuenta'}
-    >
-      {copiado ? <Check className="h-4 w-4" /> : <ClipboardCopy className="h-4 w-4" />}
-    </button>
-  )
-}
-
-function AccionesPuesto({
-  cuenta,
-  puesto,
-  recordatorio,
-  onCortar,
-  onEditarPuesto,
-  onQuitar,
-  onBorrarDefinitivo,
-  onDeshacerCortado,
-  onReubicar,
-}) {
-  if (recordatorio) {
-    return (
-      <div className="flex flex-wrap items-center justify-end gap-1">
-        <Button
-          size="sm"
-          variant="secondary"
-          onClick={() => onDeshacerCortado(cuenta, puesto)}
-          title="Me equivoqué: devolver el cliente a la cuenta"
-          className="w-full sm:w-auto"
-        >
-          <Undo2 className="h-3.5 w-3.5" />
-          Deshacer
-        </Button>
-        <Button
-          size="sm"
-          variant="danger"
-          onClick={() => onBorrarDefinitivo(cuenta, puesto)}
-          title="Ya lo quitaste del perfil: borrar recordatorio"
-          className="w-full sm:w-auto"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-          Borrar de esta cuenta
-        </Button>
-      </div>
-    )
-  }
-  return (
-    <div className="inline-flex flex-wrap items-center justify-end gap-1">
-      <BotonCopiarDatos cuenta={cuenta} puesto={puesto} />
-      <button
-        type="button"
-        onClick={() => onCortar({ cuenta, puesto })}
-        className="p-1.5 rounded-lg text-red-400 hover:text-red-300 hover:bg-red-400/10"
-        title="Marcar para quitar del perfil"
-      >
-        <Scissors className="h-4 w-4" />
-      </button>
-      <button
-        type="button"
-        onClick={() => onEditarPuesto(cuenta, puesto)}
-        className="p-1.5 text-gray-400 hover:text-indigo-400 hover:bg-indigo-400/10 rounded-lg"
-        title="Editar PIN, precio, vencimiento y notas"
-      >
-        <Pencil className="h-4 w-4" />
-      </button>
-      <button
-        type="button"
-        onClick={() => onReubicar(cuenta, puesto)}
-        className="p-1.5 text-gray-400 hover:text-emerald-400 hover:bg-emerald-400/10 rounded-lg"
-        title="Reubicar a otra cuenta de la misma plataforma"
-      >
-        <ArrowRightLeft className="h-4 w-4" />
-      </button>
-      <button
-        type="button"
-        onClick={() => onQuitar(cuenta, puesto)}
-        className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg"
-        title="Quitar de la cuenta"
-      >
-        <Trash2 className="h-4 w-4" />
-      </button>
-    </div>
-  )
-}
-
-const CuentaCard = memo(function CuentaCard({
-  cuenta,
-  puestos,
-  expanded,
-  cuentas,
-  clienteId,
-  onToggle,
-  onAsignar,
-  onEditarCuenta,
-  onEditarPuesto,
-  onQuitar,
-  onEliminarCuenta,
-  onCorreos,
-  correoVinculado,
-  onInhabilitar,
-  onHabilitar,
-  onCortar,
-  onBorrarDefinitivo,
-  onDeshacerCortado,
-  onReubicar,
-  seleccionada,
-  puestoSeleccionadoId,
-}) {
-  const llena = cuentaLlena(cuenta)
-  const inhabilitada = cuentaInhabilitada(cuenta)
-  const estado = etiquetaEstado(cuenta.estado)
-
-  return (
-    <div className={claseFila(seleccionada, `p-3 space-y-3 ${inhabilitada ? 'opacity-70' : ''}`)}>
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <p className="text-white font-medium break-all">{cuenta.correo}</p>
-            {cuenta.correo ? (
-              <button
-                type="button"
-                className="p-1 text-gray-500 hover:text-white rounded"
-                title="Copiar correo"
-                onClick={() => navigator.clipboard.writeText(cuenta.correo)}
-              >
-                <Copy className="h-3.5 w-3.5" />
-              </button>
-            ) : null}
-            <CorteBadges puestos={puestos} cuenta={cuenta} />
-          </div>
-          <p className="text-sm text-gray-400 mt-1 break-all">
-            {cuenta.contrasena || 'Sin contraseña'}
-            {cuenta.contrasena ? (
-              <button
-                type="button"
-                className="ml-1 p-1 text-gray-500 hover:text-white rounded align-middle"
-                title="Copiar contraseña"
-                onClick={() => navigator.clipboard.writeText(cuenta.contrasena)}
-              >
-                <Copy className="h-3.5 w-3.5 inline" />
-              </button>
-            ) : null}
-          </p>
-        </div>
-        <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium border shrink-0 ${estadoBadge(estado)}`}>
-          {estado}
-        </span>
-      </div>
-      <div className="text-xs text-gray-400 space-y-1">
-        <p>Vence: <FechaBadge fecha={cuenta.fecha_vencimiento} empty="Sin fecha" /></p>
-        <p>
-          {cuenta.proveedor?.nombre_prov || 'Sin proveedor'}
-          {' · '}
-          {cuenta.precio_costo != null ? `$${cuenta.precio_costo}` : 'Sin costo'}
-          {' · '}
-          {cuenta.ocupados ?? puestos.length}/{cuenta.max_puestos ?? 5} puestos
-        </p>
-      </div>
-      <div className="flex flex-wrap gap-2">
-        <Button size="sm" variant="secondary" onClick={() => onEditarCuenta(cuenta)} title="Editar">
-          <Pencil className="h-3.5 w-3.5" />
-          Editar
-        </Button>
-        <Button size="sm" onClick={() => onAsignar(cuenta)} disabled={llena || inhabilitada} title={inhabilitada ? 'Inhabilitada' : llena ? 'Llena' : 'Asignar'}>
-          <UserPlus className="h-3.5 w-3.5" />
-          {inhabilitada ? 'Inhabilitada' : llena ? 'Llena' : 'Asignar'}
-        </Button>
-        <Button size="sm" variant="secondary" onClick={() => onToggle(cuenta.id)} title={expanded ? 'Ocultar' : 'Desplegar'}>
-          {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-        </Button>
-        {puedeVerCorreos(cuenta, correoVinculado) ? (
-          <Button
-            size="sm"
-            variant={correoVinculado ? 'success' : 'secondary'}
-            onClick={() => onCorreos(cuenta.correo)}
-            disabled={!cuenta.correo}
-            title={correoVinculado ? 'Ver los correos de esta cuenta' : 'Conectar el correo para ver sus mensajes'}
-          >
-            <Mail className="h-3.5 w-3.5" />
-            Correos
-          </Button>
-        ) : null}
-        <BotonInhabilitar cuenta={cuenta} onInhabilitar={onInhabilitar} onHabilitar={onHabilitar} />
-        <Button size="sm" variant="danger" onClick={() => onEliminarCuenta(cuenta)} title="Eliminar cuenta">
-          <Trash2 className="h-3.5 w-3.5" />
-        </Button>
-      </div>
-      {expanded ? (
-        puestos.length === 0 ? (
-          <p className="text-sm text-gray-500">Esta cuenta no tiene clientes asignados</p>
-        ) : (
-          <div className="space-y-2">
-            {puestos.map((puesto, index) => {
-              const recordatorio = puestoCortado(puesto)
-              const esFiltro = clienteId && puesto.id_usuario === clienteId
-              const esPuestoSel = puestoSeleccionadoId && puesto.id === puestoSeleccionadoId
-              return (
-                <div
-                  key={puesto.id || index}
-                  className={claseFila(
-                    esPuestoSel,
-                    `rounded-lg border border-gray-700 p-3 space-y-1 ${
-                      recordatorio ? 'bg-red-500/10' : esFiltro ? 'bg-indigo-500/10' : 'bg-gray-900/50'
-                    }`
-                  )}
-                >
-                  <p className="text-white font-medium">
-                    {puesto.usuario?.nombre || 'Sin cliente'}
-                    {esComboPuesto(puesto, cuentas) ? (
-                      <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wide bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                        Combo
-                      </span>
-                    ) : null}
-                    <CorteBadgePuesto puesto={puesto} />
-                  </p>
-                  <p className="text-xs text-gray-400">
-                    {puesto.usuario?.numero_telefono || 'Sin teléfono'}
-                    {' · PIN '}
-                    {puesto.pin || '—'}
-                    {' · '}
-                    {puesto.valor_venta != null ? `$${puesto.valor_venta}` : 'Sin venta'}
-                  </p>
-                  <FechaBadge fecha={puesto.vencimiento_usuario} />
-                  {puesto.notas ? <p className="text-xs text-gray-500">{puesto.notas}</p> : null}
-                  {recordatorio ? (
-                    <p className="text-[11px] text-red-300">
-                      Recuerda quitarlo de {cuenta.correo} y luego bórralo de aquí
-                    </p>
-                  ) : null}
-                  <AccionesPuesto
-                    cuenta={cuenta}
-                    puesto={puesto}
-                    recordatorio={recordatorio}
-                    onCortar={onCortar}
-                    onEditarPuesto={onEditarPuesto}
-                    onQuitar={onQuitar}
-                    onBorrarDefinitivo={onBorrarDefinitivo}
-                    onDeshacerCortado={onDeshacerCortado}
-                    onReubicar={onReubicar}
-                  />
-                </div>
-              )
-            })}
-          </div>
-        )
-      ) : null}
-    </div>
-  )
-})
-
-const FragmentRow = memo(function FragmentRow({
-  cuenta,
-  puestos,
-  expanded,
-  cuentas,
-  clienteId,
-  colSpan,
-  onToggle,
-  onAsignar,
-  onEditarCuenta,
-  onEditarPuesto,
-  onQuitar,
-  onEliminarCuenta,
-  onCorreos,
-  correoVinculado,
-  onInhabilitar,
-  onHabilitar,
-  onCortar,
-  onBorrarDefinitivo,
-  onDeshacerCortado,
-  onReubicar,
-  seleccionada,
-  puestoSeleccionadoId,
-}) {
-  const llena = cuentaLlena(cuenta)
-  const inhabilitada = cuentaInhabilitada(cuenta)
-  const estado = etiquetaEstado(cuenta.estado)
-
-  return (
-    <Fragment>
-      <tr className={claseFila(seleccionada, `hover:bg-gray-700/40 transition-colors ${inhabilitada ? 'opacity-70' : ''}`)}>
-        <td className="px-2 xl:px-3 py-2">
-          <span className="inline-flex items-center gap-1.5">
-            <span className="text-white font-medium break-all">{cuenta.correo}</span>
-            {cuenta.correo ? (
-              <button
-                type="button"
-                className="p-1 text-gray-500 hover:text-white rounded"
-                title="Copiar correo"
-                onClick={() => navigator.clipboard.writeText(cuenta.correo)}
-              >
-                <Copy className="h-3.5 w-3.5" />
-              </button>
-            ) : null}
-            <CorteBadges puestos={puestos} cuenta={cuenta} />
-          </span>
-        </td>
-        <td className="px-2 xl:px-3 py-2">
-          {cuenta.contrasena ? (
-            <span className="inline-flex items-center gap-1.5">
-              <span className="font-mono text-gray-200 break-all">{cuenta.contrasena}</span>
-              <button
-                type="button"
-                className="p-1 text-gray-500 hover:text-white rounded"
-                title="Copiar contraseña"
-                onClick={() => navigator.clipboard.writeText(cuenta.contrasena)}
-              >
-                <Copy className="h-3.5 w-3.5" />
-              </button>
-            </span>
-          ) : (
-            <span className="text-gray-500">—</span>
-          )}
-        </td>
-        <td className="px-2 xl:px-3 py-2 text-gray-300">
-          {cuenta.proveedor?.nombre_prov || '—'}
-        </td>
-        <td className="px-2 xl:px-3 py-2">
-          <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium border ${estadoBadge(estado)}`}>
-            {estado}
-          </span>
-        </td>
-        <td className="px-2 xl:px-3 py-2 whitespace-nowrap">
-          <FechaBadge fecha={cuenta.fecha_vencimiento} empty="Sin fecha" />
-        </td>
-        <td className="px-2 xl:px-3 py-2 text-gray-300 whitespace-nowrap">
-          {cuenta.precio_costo != null ? `$${cuenta.precio_costo}` : '—'}
-        </td>
-        <td className="px-2 xl:px-3 py-2 text-gray-300 whitespace-nowrap">
-          {cuenta.ocupados ?? puestos.length}/{cuenta.max_puestos ?? 5}
-        </td>
-        <td className="px-2 xl:px-3 py-2">
-          <div className="flex flex-wrap items-center justify-end gap-1">
-            <Button size="sm" variant="secondary" onClick={() => onEditarCuenta(cuenta)} title="Editar">
-              <Pencil className="h-3.5 w-3.5" />
-              Editar
-            </Button>
-            <Button size="sm" onClick={() => onAsignar(cuenta)} disabled={llena || inhabilitada} title={inhabilitada ? 'Inhabilitada' : llena ? 'Llena' : 'Asignar'}>
-              <UserPlus className="h-3.5 w-3.5" />
-              {inhabilitada ? 'Inhabilitada' : llena ? 'Llena' : 'Asignar'}
-            </Button>
-            <Button size="sm" variant="secondary" onClick={() => onToggle(cuenta.id)} title={expanded ? 'Ocultar' : 'Desplegar'}>
-              {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-            </Button>
-            {puedeVerCorreos(cuenta, correoVinculado) ? (
-              <Button
-                size="sm"
-                variant={correoVinculado ? 'success' : 'secondary'}
-                onClick={() => onCorreos(cuenta.correo)}
-                disabled={!cuenta.correo}
-                title={correoVinculado ? 'Ver los correos de esta cuenta' : 'Conectar el correo para ver sus mensajes'}
-              >
-                <Mail className="h-3.5 w-3.5" />
-                Correos
-              </Button>
-            ) : null}
-            <BotonInhabilitar cuenta={cuenta} onInhabilitar={onInhabilitar} onHabilitar={onHabilitar} />
-            <Button
-              size="sm"
-              variant="danger"
-              onClick={() => onEliminarCuenta(cuenta)}
-              title="Eliminar cuenta"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        </td>
-      </tr>
-      {expanded && (
-        <tr className="bg-gray-900/50">
-          <td colSpan={colSpan} className="px-2 xl:px-4 py-3">
-            {puestos.length === 0 ? (
-              <p className="text-sm text-gray-500 py-2">Esta cuenta no tiene clientes asignados</p>
-            ) : (
-              <div className="rounded-lg border border-gray-700 overflow-hidden">
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-800 text-gray-400 text-xs uppercase">
-                    <tr>
-                      <th className="px-2 xl:px-3 py-2 font-medium text-left">Cliente</th>
-                      <th className="px-2 xl:px-3 py-2 font-medium text-left">Teléfono</th>
-                      <th className="px-2 xl:px-3 py-2 font-medium text-left">PIN</th>
-                      <th className="px-2 xl:px-3 py-2 font-medium text-left">Vencimiento</th>
-                      <th className="px-2 xl:px-3 py-2 font-medium text-left">Venta</th>
-                      <th className="px-2 xl:px-3 py-2 font-medium text-left">Notas</th>
-                      <th className="px-2 xl:px-3 py-2 font-medium text-right"> </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-700">
-                    {puestos.map((puesto, index) => {
-                      const esFiltro = clienteId && puesto.id_usuario === clienteId
-                      const esPuestoSel = puestoSeleccionadoId && puesto.id === puestoSeleccionadoId
-                      const recordatorio = puestoCortado(puesto)
-                      return (
-                        <tr
-                          key={puesto.id || index}
-                          className={claseFila(
-                            esPuestoSel,
-                            recordatorio
-                              ? 'bg-red-500/10'
-                              : esFiltro
-                                ? 'bg-indigo-500/10'
-                                : ''
-                          )}
-                        >
-                          <td className="px-2 xl:px-3 py-2 text-white">
-                            <span className="inline-flex items-center gap-2 flex-wrap">
-                              {puesto.usuario?.nombre || 'Sin cliente'}
-                              {esComboPuesto(puesto, cuentas) && (
-                                <span className="px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wide bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                                  Combo
-                                </span>
-                              )}
-                              <CorteBadgePuesto puesto={puesto} />
-                            </span>
-                            {recordatorio ? (
-                              <p className="text-[11px] text-red-300 mt-1">
-                                Recuerda quitarlo de {cuenta.correo} y luego bórralo de aquí
-                              </p>
-                            ) : null}
-                          </td>
-                          <td className="px-2 xl:px-3 py-2 text-gray-400">
-                            {puesto.usuario?.numero_telefono || '—'}
-                          </td>
-                          <td className="px-2 xl:px-3 py-2 font-mono text-gray-300">
-                            {puesto.pin || '—'}
-                          </td>
-                          <td className="px-2 xl:px-3 py-2">
-                            <FechaBadge fecha={puesto.vencimiento_usuario} />
-                          </td>
-                          <td className="px-2 xl:px-3 py-2 text-gray-300">
-                            {puesto.valor_venta != null ? `$${puesto.valor_venta}` : '—'}
-                          </td>
-                          <td className="px-2 xl:px-3 py-2 text-gray-400 max-w-[200px] break-words">
-                            {puesto.notas || '—'}
-                          </td>
-                          <td className="px-2 xl:px-3 py-2 text-right">
-                            <AccionesPuesto
-                              cuenta={cuenta}
-                              puesto={puesto}
-                              recordatorio={recordatorio}
-                              onCortar={onCortar}
-                              onEditarPuesto={onEditarPuesto}
-                              onQuitar={onQuitar}
-                              onBorrarDefinitivo={onBorrarDefinitivo}
-                              onDeshacerCortado={onDeshacerCortado}
-                              onReubicar={onReubicar}
-                            />
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </td>
-        </tr>
-      )}
-    </Fragment>
-  )
-})
