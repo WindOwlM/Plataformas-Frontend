@@ -124,7 +124,7 @@ function FechaConAtajos({ value, onChange, actual }) {
   )
 }
 
-export default function RenovarModal({ isOpen, item, onClose, onSaved }) {
+export default function RenovarModal({ isOpen, item, onClose, onSaved, saldoFavor = 0 }) {
   const { request } = useApi()
   const [editarPlataformas, setEditarPlataformas] = useState(false)
   const [lineas, setLineas] = useState([])
@@ -240,7 +240,7 @@ export default function RenovarModal({ isOpen, item, onClose, onSaved }) {
       fecha: l.vencimiento_usuario,
     }))
     return {
-      pago: pagoParaEnviar(pago, detalle, montoSugerido),
+      pago: pagoParaEnviar(pago, detalle, montoSugerido, esCuenta ? 0 : saldoFavor),
       id_usuario: item?.id_usuario || null,
       proveedor: esGrupo ? item?.nombre : item?.proveedor || null,
     }
@@ -248,7 +248,7 @@ export default function RenovarModal({ isOpen, item, onClose, onSaved }) {
 
   async function guardar() {
     if (!item) return
-    const problemaPago = errorPago(pago, montoSugerido)
+    const problemaPago = errorPago(pago, montoSugerido, esCuenta ? 0 : saldoFavor)
     if (problemaPago) {
       setErrorLocal(problemaPago)
       return
@@ -562,6 +562,7 @@ export default function RenovarModal({ isOpen, item, onClose, onSaved }) {
           pago={pago}
           onChange={setPago}
           sugerido={montoSugerido}
+          saldo={esCuenta ? 0 : saldoFavor}
         />
 
         {errorLocal ? <p className="text-sm text-red-400">{errorLocal}</p> : null}

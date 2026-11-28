@@ -9,6 +9,7 @@ import { claseFila } from '../../lib/filaSeleccion'
 import { clavePlataforma } from '../../lib/agruparCuentas'
 import RenovarModal from './RenovarModal'
 import EtiquetaDebe from '../ui/EtiquetaDebe'
+import EtiquetaSaldo from '../ui/EtiquetaSaldo'
 import { useDeudas } from '../../lib/deudas'
 
 const tipoBadge = {
@@ -88,6 +89,7 @@ const ItemRow = memo(function ItemRow({ item, onRenovar, onVerCuenta, selecciona
             {tipoLabel[item.tipo] || 'Cliente'}
           </span>
           <EtiquetaDebe deuda={deuda} />
+          <EtiquetaSaldo deuda={deuda} />
         </div>
         <p className="text-sm text-gray-400 truncate">
           {esCombo
@@ -435,6 +437,7 @@ export default function VencimientosPanel() {
       <RenovarModal
         isOpen={!!renovar}
         item={renovar}
+        saldoFavor={deudas.get(renovar?.id_usuario)?.saldo || 0}
         onClose={() => setRenovar(null)}
         onSaved={() => {
           setRenovar(null)

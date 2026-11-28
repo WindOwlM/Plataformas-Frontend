@@ -12,7 +12,7 @@ function fechaKey(value) {
   return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : ''
 }
 
-export default function RenovarClienteModal({ isOpen, onClose, onSaved, cliente }) {
+export default function RenovarClienteModal({ isOpen, onClose, onSaved, cliente, saldoFavor = 0 }) {
   const { request } = useApi()
   const [lineas, setLineas] = useState([])
   const [guardando, setGuardando] = useState(false)
@@ -54,7 +54,7 @@ export default function RenovarClienteModal({ isOpen, onClose, onSaved, cliente 
       setError('Todas las cuentas seleccionadas deben tener fecha.')
       return
     }
-    const problemaPago = errorPago(pago, montoSugerido)
+    const problemaPago = errorPago(pago, montoSugerido, saldoFavor)
     if (problemaPago) {
       setError(problemaPago)
       return
@@ -75,7 +75,8 @@ export default function RenovarClienteModal({ isOpen, onClose, onSaved, cliente 
         pago: pagoParaEnviar(
           pago,
           seleccionadas.map((l) => ({ plataforma: l.plataforma, correo: l.correo, valor: l.valor, fecha: l.fechaNueva })),
-          montoSugerido
+          montoSugerido,
+          saldoFavor
         ),
       }),
     })
@@ -191,7 +192,7 @@ export default function RenovarClienteModal({ isOpen, onClose, onSaved, cliente 
               Se renovarán {seleccionadas.length} de {lineas.length} cuenta{lineas.length === 1 ? '' : 's'}.
             </p>
 
-            <PagoRenovacion tipo="cobro" pago={pago} onChange={setPago} sugerido={montoSugerido} />
+            <PagoRenovacion tipo="cobro" pago={pago} onChange={setPago} sugerido={montoSugerido} saldo={saldoFavor} />
           </>
         )}
 

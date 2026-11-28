@@ -1,19 +1,15 @@
 import { useCallback, useEffect, useState } from 'react'
 
-// Lo que cada cliente debe (fiados pendientes), por id de cliente.
+// Lo que cada cliente debe (fiados pendientes) y su saldo a favor, por id de cliente.
+//   { total: debe, cantidad: nº de fiados, desde: fecha del fiado más viejo, saldo }
 export function useDeudas(request) {
   const [deudas, setDeudas] = useState(() => new Map())
 
   const recargar = useCallback(async () => {
-    const { data } = await request('/pagos/pendientes', { silent: true })
+    const { data } = await request('/pagos/clientes-estado', { silent: true })
     const mapa = new Map()
-    for (const p of data?.pendientes || []) {
-      if (p.tipo !== 'cobro' || !p.id_usuario) continue
-      const actual = mapa.get(p.id_usuario) || { total: 0, cantidad: 0, desde: p.fecha }
-      actual.total += Number(p.monto) || 0
-      actual.cantidad += 1
-      if (p.fecha < actual.desde) actual.desde = p.fecha
-      mapa.set(p.id_usuario, actual)
+    for (const [id, c] of Object.entries(data?.clientes || {})) {
+      mapa.set(id, { total: c.debe, cantidad: c.fiados, desde: c.desde, saldo: c.saldo })
     }
     setDeudas(mapa)
   }, [request])

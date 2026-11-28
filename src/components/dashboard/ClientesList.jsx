@@ -1,9 +1,11 @@
 import { useState, useEffect, useMemo } from 'react'
-import { CalendarClock, ChevronDown, ChevronRight, Pencil, Plus, Users } from 'lucide-react'
+import { CalendarClock, ChevronDown, ChevronRight, Pencil, Plus, Users, Wallet } from 'lucide-react'
 import { useApi } from '../../hooks/useApi'
 import ClienteModal from './ClienteModal'
 import RenovarClienteModal from './RenovarClienteModal'
 import EtiquetaDebe from '../ui/EtiquetaDebe'
+import EtiquetaSaldo from '../ui/EtiquetaSaldo'
+import HistorialPagosModal from './HistorialPagosModal'
 import { useDeudas } from '../../lib/deudas'
 import Button from '../ui/Button'
 import { fieldClass } from '../ui/fieldStyles'
@@ -19,6 +21,7 @@ export default function ClientesList() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [clienteEditando, setClienteEditando] = useState(null)
   const [clienteRenovar, setClienteRenovar] = useState(null)
+  const [clientePagos, setClientePagos] = useState(null)
   const { request, loading } = useApi()
   const { deudas, recargarDeudas } = useDeudas(request)
 
@@ -137,6 +140,7 @@ export default function ClientesList() {
               const seleccionada =
                 (isModalOpen && clienteEditando?.id === cliente.id)
                 || clienteRenovar?.id === cliente.id
+                || clientePagos?.id === cliente.id
               return (
                 <div key={cliente.id}>
                   <div className={claseFila(seleccionada, 'px-4 py-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between hover:bg-gray-700/50 transition-colors gap-3')}>
@@ -150,6 +154,7 @@ export default function ClientesList() {
                         <div className="flex flex-wrap items-center gap-2 min-w-0">
                           <p className="text-white font-medium truncate">{cliente.nombre}</p>
                           <EtiquetaDebe deuda={deudas.get(cliente.id)} />
+                          <EtiquetaSaldo deuda={deudas.get(cliente.id)} />
                         </div>
                         <p className="text-sm text-gray-400">
                           {cliente.numero_telefono || 'Sin teléfono'}
@@ -168,6 +173,10 @@ export default function ClientesList() {
                       >
                         <CalendarClock className="h-3.5 w-3.5" />
                         Renovar
+                      </Button>
+                      <Button size="sm" variant="secondary" onClick={() => setClientePagos(cliente)}>
+                        <Wallet className="h-3.5 w-3.5" />
+                        Pagos
                       </Button>
                       <Button size="sm" variant="secondary" onClick={() => toggleExpand(cliente.id)}>
                         {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
@@ -250,12 +259,20 @@ export default function ClientesList() {
       <RenovarClienteModal
         isOpen={!!clienteRenovar}
         cliente={clienteRenovar}
+        saldoFavor={deudas.get(clienteRenovar?.id)?.saldo || 0}
         onClose={() => setClienteRenovar(null)}
         onSaved={async () => {
           setClienteRenovar(null)
           await cargarClientes()
           recargarDeudas()
         }}
+      />
+
+      <HistorialPagosModal
+        isOpen={!!clientePagos}
+        cliente={clientePagos}
+        onClose={() => setClientePagos(null)}
+        onCambio={recargarDeudas}
       />
     </div>
   )

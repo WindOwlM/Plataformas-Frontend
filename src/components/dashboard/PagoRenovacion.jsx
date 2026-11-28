@@ -1,13 +1,18 @@
 import { useEffect } from 'react'
 import { fieldClass } from '../ui/fieldStyles'
-import { MEDIOS_PAGO } from '../../lib/pagos'
+import { MEDIOS_PAGO, calcularSaldo } from '../../lib/pagos'
 import { formatSaldo } from '../../lib/vencimientos'
 
 // Recuadro de pago dentro de Renovar.
 // tipo 'cobro' = lo que paga el cliente; 'gasto' = lo que pagas al proveedor.
-export default function PagoRenovacion({ tipo = 'cobro', pago, onChange, sugerido = 0 }) {
+export default function PagoRenovacion({ tipo = 'cobro', pago, onChange, sugerido = 0, saldo = 0 }) {
   const esGasto = tipo === 'gasto'
-  const total = Math.round(Number(sugerido) || 0)
+  const { usado, aPagar: total, total: totalCuentas, disponible } = calcularSaldo(
+    pago,
+    sugerido,
+    esGasto ? 0 : saldo
+  )
+  const saldoCubreTodo = usado > 0 && total === 0
   const montoSugerido = String(total)
 
   // En "Pagó" el monto sigue al precio de las cuentas mientras no lo cambies a mano
@@ -81,9 +86,26 @@ export default function PagoRenovacion({ tipo = 'cobro', pago, onChange, sugerid
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <p className="text-sm font-medium text-white">{esGasto ? 'Pago al proveedor' : 'Pago del cliente'}</p>
           <p className="text-xs text-gray-400">
-            Total de las cuentas: <span className="text-white tabular-nums">{formatSaldo(total)}</span>
+            Total de las cuentas: <span className="text-white tabular-nums">{formatSaldo(totalCuentas)}</span>
           </p>
         </div>
+        {!esGasto && disponible > 0 ? (
+          <label className="flex flex-wrap items-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-100 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={!!pago.usarSaldo}
+              disabled={pago.modo === 'no'}
+              onChange={(e) => onChange({ ...pago, usarSaldo: e.target.checked, editado: false })}
+              className="h-4 w-4 rounded border-gray-600 bg-gray-900"
+            />
+            Usar saldo a favor (tiene {formatSaldo(disponible)})
+            {usado > 0 ? (
+              <span className="text-emerald-200/80">
+                · se descuentan {formatSaldo(usado)}, queda por pagar {formatSaldo(total)}
+              </span>
+            ) : null}
+          </label>
+        ) : null}
         <div className="grid grid-cols-2 sm:grid-cols-4 rounded-lg border border-gray-700 overflow-hidden" role="radiogroup">
           {modos.map((m) => (
             <button
@@ -102,7 +124,13 @@ export default function PagoRenovacion({ tipo = 'cobro', pago, onChange, sugerid
         </div>
       </div>
 
-      {pago.modo === 'pagado' ? (
+      {saldoCubreTodo ? (
+        <p className="text-sm text-emerald-200">
+          El saldo a favor cubre todo. Le quedan {formatSaldo(disponible - usado)} a favor y no se registra cobro.
+        </p>
+      ) : null}
+
+      {pago.modo === 'pagado' && !saldoCubreTodo ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="block text-xs text-gray-400 mb-1">Monto</label>
@@ -129,7 +157,7 @@ export default function PagoRenovacion({ tipo = 'cobro', pago, onChange, sugerid
         </div>
       ) : null}
 
-      {pago.modo === 'parcial' ? (
+      {pago.modo === 'parcial' && !saldoCubreTodo ? (
         <div className="space-y-2">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
@@ -154,15 +182,15 @@ export default function PagoRenovacion({ tipo = 'cobro', pago, onChange, sugerid
         </div>
       ) : null}
 
-      {pago.modo === 'pendiente' ? (
+      {pago.modo === 'pendiente' && !saldoCubreTodo ? (
         <p className="text-sm text-gray-300">
           {esGasto ? 'Quedas debiendo' : 'Queda debiendo'}:{' '}
           <span className="font-semibold text-amber-200 tabular-nums">{formatSaldo(total)}</span>
-          <span className="text-gray-500"> (el total de las cuentas)</span>
+          <span className="text-gray-500">{usado > 0 ? ' (después del saldo a favor)' : ' (el total de las cuentas)'}</span>
         </p>
       ) : null}
 
-      <p className="text-xs text-gray-500">{ayuda[pago.modo]}</p>
+      {!saldoCubreTodo ? <p className="text-xs text-gray-500">{ayuda[pago.modo]}</p> : null}
     </div>
   )
 }

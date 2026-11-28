@@ -8,7 +8,7 @@ import { MEDIOS_PAGO } from '../../lib/pagos'
 import { formatFecha, formatSaldo } from '../../lib/vencimientos'
 
 function quien(p) {
-  return p.tipo === 'cobro' ? p.cliente || 'Cliente' : p.proveedor || 'Proveedor'
+  return p.tipo === 'gasto' ? p.proveedor || 'Proveedor' : p.cliente || 'Cliente'
 }
 
 function plataformasDe(p) {
@@ -17,6 +17,17 @@ function plataformasDe(p) {
 }
 
 function EtiquetaTipo({ p }) {
+  if (p.tipo === 'saldo') {
+    return p.monto >= 0 ? (
+      <span className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium uppercase tracking-wide border bg-emerald-500/15 text-emerald-200 border-emerald-500/40">
+        Saldo a favor
+      </span>
+    ) : (
+      <span className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium uppercase tracking-wide border bg-gray-600/40 text-gray-200 border-gray-500/50">
+        Saldo usado
+      </span>
+    )
+  }
   if (p.estado === 'pendiente') {
     return (
       <span className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium uppercase tracking-wide border bg-amber-500/15 text-amber-200 border-amber-500/40">
@@ -36,7 +47,7 @@ function EtiquetaTipo({ p }) {
 }
 
 // Fila de un pendiente con su mini formulario "Ya pagó"
-function FilaPendiente({ p, onPagado, onEliminar }) {
+export function FilaPendiente({ p, onPagado, onEliminar }) {
   const [abierto, setAbierto] = useState(false)
   const [medio, setMedio] = useState('')
   const [monto, setMonto] = useState(String(p.monto))
@@ -200,6 +211,11 @@ export default function PagosPanel({ mes, nombreMes, real, onCambio, Seccion }) 
               {real.fiados} cliente{real.fiados === 1 ? '' : 's'}
               {real.deuda_proveedores ? ` · tú debes ${formatSaldo(real.deuda_proveedores)}` : ''}
             </p>
+            {real.saldo_favor ? (
+              <p className="text-xs text-emerald-200/80">
+                Saldo a favor de {real.clientes_saldo} cliente{real.clientes_saldo === 1 ? '' : 's'}: {formatSaldo(real.saldo_favor)}
+              </p>
+            ) : null}
           </div>
         </div>
 
@@ -280,11 +296,18 @@ export default function PagosPanel({ mes, nombreMes, real, onCambio, Seccion }) 
                 <div className="flex items-center gap-2">
                   <span
                     className={`tabular-nums ${
-                      p.estado === 'pendiente' ? 'text-amber-200' : p.tipo === 'cobro' ? 'text-green-300' : 'text-red-300'
+                      p.tipo === 'saldo'
+                        ? 'text-emerald-200'
+                        : p.estado === 'pendiente'
+                          ? 'text-amber-200'
+                          : p.tipo === 'cobro'
+                            ? 'text-green-300'
+                            : 'text-red-300'
                     }`}
                   >
-                    {p.tipo === 'gasto' && p.estado === 'pagado' ? '−' : ''}
-                    {formatSaldo(p.monto)}
+                    {(p.tipo === 'gasto' && p.estado === 'pagado') || (p.tipo === 'saldo' && p.monto < 0) ? '−' : ''}
+                    {p.tipo === 'saldo' && p.monto >= 0 ? '+' : ''}
+                    {formatSaldo(Math.abs(p.monto))}
                   </span>
                   <button
                     type="button"
