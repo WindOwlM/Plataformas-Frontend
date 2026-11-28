@@ -6,6 +6,8 @@ import Modal from '../ui/Modal'
 import { fieldClass } from '../ui/fieldStyles'
 import { fechaHoy, formatFecha, sumarDias } from '../../lib/vencimientos'
 import { cuentaNoAsignable, etiquetaOpcionCuenta, ordenarCuentasPorCupo } from '../../lib/cuentaEstado'
+import { errorPago, pagoInicial, pagoParaEnviar } from '../../lib/pagos'
+import PagoRenovacion from './PagoRenovacion'
 
 let lineaSeq = 0
 function nuevaKey() {
@@ -68,6 +70,7 @@ function lineasIniciales(item) {
         plataforma: c.plataforma,
         correo: c.correo,
         fecha: c.fecha,
+        valor: c.valor,
       }),
       incluir: true,
     }))
@@ -80,6 +83,7 @@ function lineasIniciales(item) {
         plataforma: item.plataforma,
         correo: item.correo,
         fecha: item.fecha,
+        valor: item.valor,
       }),
     ]
   }
@@ -128,6 +132,7 @@ export default function RenovarModal({ isOpen, item, onClose, onSaved }) {
   const [cuentasPorPlat, setCuentasPorPlat] = useState({})
   const [guardando, setGuardando] = useState(false)
   const [errorLocal, setErrorLocal] = useState('')
+  const [pago, setPago] = useState(pagoInicial)
   const cuentasCargadas = useRef(new Set())
 
   const esGrupo = item?.tipo === 'grupo_cuentas'
@@ -148,6 +153,7 @@ export default function RenovarModal({ isOpen, item, onClose, onSaved }) {
     setCuentasPorPlat({})
     cuentasCargadas.current = new Set()
     setErrorLocal('')
+    setPago(pagoInicial())
   }, [isOpen, item])
 
   useEffect(() => {
@@ -219,8 +225,34 @@ export default function RenovarModal({ isOpen, item, onClose, onSaved }) {
     setLineas((prev) => (prev.length <= 1 ? prev : prev.filter((l) => l.key !== key)))
   }
 
+  const lineasPago = esGrupo ? lineas.filter((l) => l.incluir) : lineas
+  const montoSugerido = lineasPago.reduce((suma, l) => suma + (Number(l.valor_venta) || 0), 0)
+
+  function datosPago() {
+    const detalle = lineasPago.map((l) => ({
+      plataforma:
+        l.plataformaNombre ||
+        plataformas.find((p) => p.id === l.id_plataforma)?.nombre_plat ||
+        item?.plataforma ||
+        '',
+      correo: l.correo || (l.id_por_ubicar ? 'Por ubicar' : ''),
+      valor: Number(l.valor_venta) || 0,
+      fecha: l.vencimiento_usuario,
+    }))
+    return {
+      pago: pagoParaEnviar(pago, detalle),
+      id_usuario: item?.id_usuario || null,
+      proveedor: esGrupo ? item?.nombre : item?.proveedor || null,
+    }
+  }
+
   async function guardar() {
     if (!item) return
+    const problemaPago = errorPago(pago)
+    if (problemaPago) {
+      setErrorLocal(problemaPago)
+      return
+    }
     if (esGrupo) {
       const elegidas = lineas.filter((l) => l.incluir)
       if (elegidas.length === 0) {
@@ -239,6 +271,7 @@ export default function RenovarModal({ isOpen, item, onClose, onSaved }) {
           tipo: 'cuentas',
           fecha: elegidas[0].vencimiento_usuario,
           renovaciones: elegidas.map((l) => ({ id_cuenta: l.id_cuenta, fecha: l.vencimiento_usuario })),
+          ...datosPago(),
         }),
       })
       setGuardando(false)
@@ -275,6 +308,7 @@ export default function RenovarModal({ isOpen, item, onClose, onSaved }) {
             id_por_ubicar: l.id_por_ubicar || null,
             fecha: l.vencimiento_usuario,
           })),
+          ...datosPago(),
         }),
       })
       setGuardando(false)
@@ -308,6 +342,7 @@ export default function RenovarModal({ isOpen, item, onClose, onSaved }) {
           valor_venta: l.valor_venta,
           vencimiento_usuario: l.vencimiento_usuario,
         })),
+        pago: datosPago().pago,
       }),
     })
     setGuardando(false)
@@ -521,6 +556,13 @@ export default function RenovarModal({ isOpen, item, onClose, onSaved }) {
                 </Button>
               </div>
         )}
+
+        <PagoRenovacion
+          tipo={esCuenta ? 'gasto' : 'cobro'}
+          pago={pago}
+          onChange={setPago}
+          sugerido={montoSugerido}
+        />
 
         {errorLocal ? <p className="text-sm text-red-400">{errorLocal}</p> : null}
 

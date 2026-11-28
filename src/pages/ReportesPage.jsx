@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Loader2, TrendingUp, Wallet, Users, Receipt 
 import { useApi } from '../hooks/useApi'
 import StatCard from '../components/dashboard/StatCard'
 import { formatSaldo } from '../lib/vencimientos'
+import PagosPanel from '../components/reportes/PagosPanel'
 
 // Reporte solo de lectura: cuánto debería entrar y salir según los datos actuales.
 
@@ -72,6 +73,7 @@ export default function ReportesPage() {
   const [mes, setMes] = useState(mesActual)
   const [datos, setDatos] = useState(null)
   const [cargando, setCargando] = useState(true)
+  const [version, setVersion] = useState(0)
 
   useEffect(() => {
     let vigente = true
@@ -84,7 +86,7 @@ export default function ReportesPage() {
     return () => {
       vigente = false
     }
-  }, [mes, request])
+  }, [mes, request, version])
 
   if (!datos) {
     return (
@@ -95,7 +97,7 @@ export default function ReportesPage() {
     )
   }
 
-  const { general, vencidos, mes_detalle: detalle, plataformas, incompletos, hoy } = datos
+  const { general, vencidos, mes_detalle: detalle, plataformas, incompletos, hoy, real } = datos
   const esMesActual = mes === hoy.slice(0, 7)
   const esPasado = mes < hoy.slice(0, 7)
   const maxDia = Math.max(0, ...detalle.por_dia.map((d) => Math.max(d.cobro, d.pago)))
@@ -105,13 +107,46 @@ export default function ReportesPage() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h2 className="text-xl font-bold text-white">Reportes</h2>
-        <p className="text-sm text-gray-400 mt-1">
-          Calculado con los precios y fechas que hay hoy en la app. Todavía no se guardan los pagos, así que
-          son valores esperados, no lo que realmente entró.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-xl font-bold text-white">Reportes</h2>
+          <p className="text-sm text-gray-400 mt-1">
+            Las cifras esperadas salen de los precios y fechas que hay hoy en la app. Las reales, de los pagos
+            guardados al renovar.
+          </p>
+        </div>
+        <div className="flex items-center gap-1 rounded-lg border border-gray-700 bg-gray-800 px-1">
+          <button
+            type="button"
+            onClick={() => setMes((m) => moverMes(m, -1))}
+            className="p-2 rounded-lg text-gray-300 hover:bg-gray-700"
+            aria-label="Mes anterior"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <span className="text-sm text-white w-36 text-center tabular-nums">
+            {cargando ? <Loader2 className="h-4 w-4 animate-spin inline" /> : nombreMes(mes)}
+          </span>
+          <button
+            type="button"
+            onClick={() => setMes((m) => moverMes(m, 1))}
+            className="p-2 rounded-lg text-gray-300 hover:bg-gray-700"
+            aria-label="Mes siguiente"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
       </div>
+
+      <PagosPanel
+        mes={mes}
+        nombreMes={nombreMes(mes)}
+        real={real}
+        onCambio={() => setVersion((v) => v + 1)}
+        Seccion={Seccion}
+      />
+
+      <h3 className="text-sm uppercase tracking-wide text-gray-500 pt-2">Esperado según los datos actuales</h3>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <StatCard
@@ -143,29 +178,6 @@ export default function ReportesPage() {
       <Seccion
         titulo={`Vencimientos de ${nombreMes(mes)}`}
         descripcion="Lo que te deberían pagar los clientes y lo que debes pagar a proveedores según las fechas de vencimiento."
-        accion={
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => setMes((m) => moverMes(m, -1))}
-              className="p-2 rounded-lg text-gray-300 hover:bg-gray-700"
-              aria-label="Mes anterior"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <span className="text-sm text-white w-36 text-center tabular-nums">
-              {cargando ? <Loader2 className="h-4 w-4 animate-spin inline" /> : nombreMes(mes)}
-            </span>
-            <button
-              type="button"
-              onClick={() => setMes((m) => moverMes(m, 1))}
-              className="p-2 rounded-lg text-gray-300 hover:bg-gray-700"
-              aria-label="Mes siguiente"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
-        }
       >
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <Cifra

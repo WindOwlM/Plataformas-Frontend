@@ -4,6 +4,8 @@ import Button from '../ui/Button'
 import Modal from '../ui/Modal'
 import { fieldClass } from '../ui/fieldStyles'
 import { fechaHoy, formatFecha, puestoCortado, sumarDias } from '../../lib/vencimientos'
+import { errorPago, pagoInicial, pagoParaEnviar } from '../../lib/pagos'
+import PagoRenovacion from './PagoRenovacion'
 
 function fechaKey(value) {
   const s = String(value || '').slice(0, 10)
@@ -15,6 +17,7 @@ export default function RenovarClienteModal({ isOpen, onClose, onSaved, cliente 
   const [lineas, setLineas] = useState([])
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
+  const [pago, setPago] = useState(pagoInicial)
 
   useEffect(() => {
     if (!isOpen || !cliente) return
@@ -27,6 +30,7 @@ export default function RenovarClienteModal({ isOpen, onClose, onSaved, cliente 
         id_cuenta: puesto.cuenta.id,
         plataforma: puesto.cuenta?.plataforma?.nombre_plat || '—',
         correo: puesto.cuenta?.correo || '—',
+        valor: Number(puesto.valor_venta) || 0,
         fechaActual: actual,
         fechaNueva: actual ? sumarDias(actual, 30) : sumarDias(fechaHoy(), 30),
         incluida: true,
@@ -34,9 +38,11 @@ export default function RenovarClienteModal({ isOpen, onClose, onSaved, cliente 
     })
     setLineas(filas)
     setError('')
+    setPago(pagoInicial())
   }, [isOpen, cliente])
 
   const seleccionadas = lineas.filter((l) => l.incluida)
+  const montoSugerido = seleccionadas.reduce((suma, l) => suma + l.valor, 0)
 
   async function confirmar() {
     if (seleccionadas.length === 0) {
@@ -46,6 +52,11 @@ export default function RenovarClienteModal({ isOpen, onClose, onSaved, cliente 
     const incompleta = seleccionadas.find((l) => !fechaKey(l.fechaNueva))
     if (incompleta) {
       setError('Todas las cuentas seleccionadas deben tener fecha.')
+      return
+    }
+    const problemaPago = errorPago(pago)
+    if (problemaPago) {
+      setError(problemaPago)
       return
     }
     setGuardando(true)
@@ -60,6 +71,11 @@ export default function RenovarClienteModal({ isOpen, onClose, onSaved, cliente 
           id_cuenta: l.id_cuenta,
           fecha: l.fechaNueva,
         })),
+        id_usuario: cliente?.id || null,
+        pago: pagoParaEnviar(
+          pago,
+          seleccionadas.map((l) => ({ plataforma: l.plataforma, correo: l.correo, valor: l.valor, fecha: l.fechaNueva }))
+        ),
       }),
     })
     setGuardando(false)
@@ -173,6 +189,8 @@ export default function RenovarClienteModal({ isOpen, onClose, onSaved, cliente 
             <p className="text-xs text-gray-500">
               Se renovarán {seleccionadas.length} de {lineas.length} cuenta{lineas.length === 1 ? '' : 's'}.
             </p>
+
+            <PagoRenovacion tipo="cobro" pago={pago} onChange={setPago} sugerido={montoSugerido} />
           </>
         )}
 
