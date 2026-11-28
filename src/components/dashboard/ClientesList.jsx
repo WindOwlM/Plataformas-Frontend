@@ -3,6 +3,8 @@ import { CalendarClock, ChevronDown, ChevronRight, Pencil, Plus, Users } from 'l
 import { useApi } from '../../hooks/useApi'
 import ClienteModal from './ClienteModal'
 import RenovarClienteModal from './RenovarClienteModal'
+import EtiquetaDebe from '../ui/EtiquetaDebe'
+import { useDeudas } from '../../lib/deudas'
 import Button from '../ui/Button'
 import { fieldClass } from '../ui/fieldStyles'
 import FechaBadge from '../ui/FechaBadge'
@@ -18,6 +20,7 @@ export default function ClientesList() {
   const [clienteEditando, setClienteEditando] = useState(null)
   const [clienteRenovar, setClienteRenovar] = useState(null)
   const { request, loading } = useApi()
+  const { deudas, recargarDeudas } = useDeudas(request)
 
   useEffect(() => {
     cargarClientes()
@@ -144,7 +147,10 @@ export default function ClientesList() {
                         </span>
                       </div>
                       <div className="min-w-0">
-                        <p className="text-white font-medium truncate">{cliente.nombre}</p>
+                        <div className="flex flex-wrap items-center gap-2 min-w-0">
+                          <p className="text-white font-medium truncate">{cliente.nombre}</p>
+                          <EtiquetaDebe deuda={deudas.get(cliente.id)} />
+                        </div>
                         <p className="text-sm text-gray-400">
                           {cliente.numero_telefono || 'Sin teléfono'}
                           <span className="text-gray-600"> · </span>
@@ -248,6 +254,7 @@ export default function ClientesList() {
         onSaved={async () => {
           setClienteRenovar(null)
           await cargarClientes()
+          recargarDeudas()
         }}
       />
     </div>

@@ -8,6 +8,8 @@ import { bucketMeta, enlaceWhatsApp, formatFecha, mensajeCuentasProveedor, mensa
 import { claseFila } from '../../lib/filaSeleccion'
 import { clavePlataforma } from '../../lib/agruparCuentas'
 import RenovarModal from './RenovarModal'
+import EtiquetaDebe from '../ui/EtiquetaDebe'
+import { useDeudas } from '../../lib/deudas'
 
 const tipoBadge = {
   combo: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40',
@@ -40,7 +42,7 @@ function rutaCuenta(item) {
   return `/dashboard/cuentas?${params.toString()}`
 }
 
-const ItemRow = memo(function ItemRow({ item, onRenovar, onVerCuenta, seleccionada }) {
+const ItemRow = memo(function ItemRow({ item, onRenovar, onVerCuenta, seleccionada, deuda }) {
   const meta = bucketMeta[item.bucket]
   const esCombo = item.tipo === 'combo'
   const esHoy = item.bucket === 'hoy'
@@ -85,6 +87,7 @@ const ItemRow = memo(function ItemRow({ item, onRenovar, onVerCuenta, selecciona
           >
             {tipoLabel[item.tipo] || 'Cliente'}
           </span>
+          <EtiquetaDebe deuda={deuda} />
         </div>
         <p className="text-sm text-gray-400 truncate">
           {esCombo
@@ -223,6 +226,7 @@ export default function VencimientosPanel() {
   const [payload, setPayload] = useState({ items: [], counts: { hoy: 0, manana: 0, vencida: 0 } })
   const [filtro, setFiltro] = useState(null)
   const [renovar, setRenovar] = useState(null)
+  const { deudas, recargarDeudas } = useDeudas(request)
 
   const cargarVencimientos = useCallback(() => {
     request('/cuentas/vencimientos').then(({ data }) => {
@@ -384,7 +388,7 @@ export default function VencimientosPanel() {
                   </div>
                   <div className="divide-y divide-yellow-500/10">
                     {grupo.combos.map((item) => (
-                      <ItemRow key={item.id} item={item} onRenovar={abrirRenovar} onVerCuenta={verCuenta} seleccionada={renovar?.id === item.id} />
+                      <ItemRow key={item.id} item={item} onRenovar={abrirRenovar} onVerCuenta={verCuenta} seleccionada={renovar?.id === item.id} deuda={deudas.get(item.id_usuario)} />
                     ))}
                   </div>
                 </div>
@@ -397,7 +401,7 @@ export default function VencimientosPanel() {
                   </div>
                   <div className="divide-y divide-gray-700">
                     {seccion.filas.map((item) => (
-                      <ItemRow key={item.id} item={item} onRenovar={abrirRenovar} onVerCuenta={verCuenta} seleccionada={renovar?.id === item.id} />
+                      <ItemRow key={item.id} item={item} onRenovar={abrirRenovar} onVerCuenta={verCuenta} seleccionada={renovar?.id === item.id} deuda={deudas.get(item.id_usuario)} />
                     ))}
                   </div>
                 </div>
@@ -435,6 +439,7 @@ export default function VencimientosPanel() {
         onSaved={() => {
           setRenovar(null)
           cargarVencimientos()
+          recargarDeudas()
         }}
       />
     </div>
