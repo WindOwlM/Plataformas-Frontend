@@ -135,6 +135,21 @@ export function classifyFecha(fecha) {
 }
 
 // "2026-12-22" -> "22 de diciembre"
+// Número listo para WhatsApp: solo dígitos y con el 57 de Colombia si falta.
+// Devuelve '' si no hay número.
+export function numeroWhatsApp(telefono) {
+  let digitos = String(telefono || '').replace(/\D/g, '')
+  if (digitos.length === 10 && digitos.startsWith('3')) digitos = `57${digitos}`
+  return digitos
+}
+
+// Enlace que abre el chat del cliente con el mensaje ya escrito (no lo envía).
+export function enlaceWhatsApp(telefono, mensaje) {
+  const numero = numeroWhatsApp(telefono)
+  if (!numero) return ''
+  return `https://wa.me/${numero}?text=${encodeURIComponent(mensaje || '')}`
+}
+
 export function fechaCorteTexto(key) {
   const dt = parseFechaLocal(key)
   if (!dt) return ''

@@ -1,10 +1,10 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Clock, CalendarClock, CircleAlert, Copy, ExternalLink, Loader2, Truck } from 'lucide-react'
+import { Clock, CalendarClock, CircleAlert, Copy, ExternalLink, Loader2, MessageCircle, Truck } from 'lucide-react'
 import { useApi } from '../../hooks/useApi'
 import StatCard from './StatCard'
 import Button from '../ui/Button'
-import { bucketMeta, formatFecha, mensajeCuentasProveedor, mensajeRecordatorioHoy } from '../../lib/vencimientos'
+import { bucketMeta, enlaceWhatsApp, formatFecha, mensajeCuentasProveedor, mensajeRecordatorioHoy } from '../../lib/vencimientos'
 import { claseFila } from '../../lib/filaSeleccion'
 import { clavePlataforma } from '../../lib/agruparCuentas'
 import RenovarModal from './RenovarModal'
@@ -60,6 +60,11 @@ const ItemRow = memo(function ItemRow({ item, onRenovar, onVerCuenta, selecciona
     }
   }
 
+  function abrirWhatsApp() {
+    const enlace = enlaceWhatsApp(item.telefono, mensajeRecordatorioHoy(item))
+    if (enlace) window.open(enlace, '_blank', 'noopener')
+  }
+
   return (
     <div
       className={claseFila(
@@ -110,6 +115,19 @@ const ItemRow = memo(function ItemRow({ item, onRenovar, onVerCuenta, selecciona
             <Copy className="h-3.5 w-3.5" />
             {copiado ? 'Copiado' : 'Copiar mensaje'}
           </Button>
+        ) : null}
+        {esHoy && item.tipo !== 'cuenta' ? (
+          item.telefono ? (
+            <Button size="sm" variant="success" onClick={abrirWhatsApp}>
+              <MessageCircle className="h-3.5 w-3.5" />
+              WhatsApp
+            </Button>
+          ) : (
+            <Button size="sm" variant="secondary" disabled title="Este cliente no tiene teléfono guardado">
+              <MessageCircle className="h-3.5 w-3.5" />
+              Sin teléfono
+            </Button>
+          )
         ) : null}
         {item.tipo === 'por_ubicar' ? (
           <Button size="sm" variant="secondary" onClick={() => onVerCuenta(item)}>
