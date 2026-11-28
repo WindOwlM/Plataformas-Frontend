@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { Zap, LayoutDashboard, Mail, CreditCard, Users, Library, LogOut, MapPin, Ban } from 'lucide-react'
+import { Zap, LayoutDashboard, Mail, CreditCard, Users, Library, LogOut, MapPin, Ban, BarChart3 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import ErroresButton from './ErroresButton'
 
@@ -9,6 +9,7 @@ const navItems = [
   { to: '/dashboard/inhabilitadas', label: 'Inhabilitadas', icon: Ban },
   { to: '/dashboard/por-ubicar', label: 'Por ubicar', icon: MapPin },
   { to: '/dashboard/clientes', label: 'Clientes', icon: Users },
+  { to: '/dashboard/reportes', label: 'Reportes', icon: BarChart3 },
   { to: '/dashboard/catalogos', label: 'Catálogos', icon: Library },
   { to: '/dashboard/correos', label: 'Correos', icon: Mail },
 ]

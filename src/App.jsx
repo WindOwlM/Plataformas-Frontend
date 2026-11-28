@@ -9,6 +9,7 @@ import ClientesPage from './pages/ClientesPage'
 import CatalogosPage from './pages/CatalogosPage'
 import CorreosPage from './pages/CorreosPage'
 import PorUbicarPage from './pages/PorUbicarPage'
+import ReportesPage from './pages/ReportesPage'
 import ErrorToasts from './components/ui/Toast'
 
 function ProtectedRoute({ children }) {
@@ -51,6 +52,7 @@ function App() {
             <Route path="clientes" element={<ClientesPage />} />
             <Route path="catalogos" element={<CatalogosPage />} />
             <Route path="correos" element={<CorreosPage />} />
+            <Route path="reportes" element={<ReportesPage />} />
           </Route>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
         </Routes>
