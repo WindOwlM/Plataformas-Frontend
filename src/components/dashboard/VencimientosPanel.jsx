@@ -62,7 +62,8 @@ const ItemRow = memo(function ItemRow({ item, onRenovar, onVerCuenta, selecciona
 
   function abrirWhatsApp() {
     const enlace = enlaceWhatsApp(item.telefono, mensajeRecordatorioHoy(item))
-    if (enlace) window.open(enlace, '_blank', 'noopener')
+    // Siempre la misma pestaña: WhatsApp Web solo permite una abierta a la vez
+    if (enlace) window.open(enlace, 'whatsapp-plataformas')
   }
 
   return (

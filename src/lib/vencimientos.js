@@ -143,11 +143,18 @@ export function numeroWhatsApp(telefono) {
   return digitos
 }
 
+const esCelular = () =>
+  typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
+
 // Enlace que abre el chat del cliente con el mensaje ya escrito (no lo envía).
+// En el celular abre la app; en el computador va directo a WhatsApp Web.
 export function enlaceWhatsApp(telefono, mensaje) {
   const numero = numeroWhatsApp(telefono)
   if (!numero) return ''
-  return `https://wa.me/${numero}?text=${encodeURIComponent(mensaje || '')}`
+  const texto = encodeURIComponent(mensaje || '')
+  return esCelular()
+    ? `https://wa.me/${numero}?text=${texto}`
+    : `https://web.whatsapp.com/send?phone=${numero}&text=${texto}`
 }
 
 export function fechaCorteTexto(key) {
