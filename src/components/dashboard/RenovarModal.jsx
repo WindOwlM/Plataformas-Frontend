@@ -240,7 +240,7 @@ export default function RenovarModal({ isOpen, item, onClose, onSaved }) {
       fecha: l.vencimiento_usuario,
     }))
     return {
-      pago: pagoParaEnviar(pago, detalle),
+      pago: pagoParaEnviar(pago, detalle, montoSugerido),
       id_usuario: item?.id_usuario || null,
       proveedor: esGrupo ? item?.nombre : item?.proveedor || null,
     }
@@ -248,7 +248,7 @@ export default function RenovarModal({ isOpen, item, onClose, onSaved }) {
 
   async function guardar() {
     if (!item) return
-    const problemaPago = errorPago(pago)
+    const problemaPago = errorPago(pago, montoSugerido)
     if (problemaPago) {
       setErrorLocal(problemaPago)
       return

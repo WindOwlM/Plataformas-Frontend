@@ -54,7 +54,7 @@ export default function RenovarClienteModal({ isOpen, onClose, onSaved, cliente 
       setError('Todas las cuentas seleccionadas deben tener fecha.')
       return
     }
-    const problemaPago = errorPago(pago)
+    const problemaPago = errorPago(pago, montoSugerido)
     if (problemaPago) {
       setError(problemaPago)
       return
@@ -74,7 +74,8 @@ export default function RenovarClienteModal({ isOpen, onClose, onSaved, cliente 
         id_usuario: cliente?.id || null,
         pago: pagoParaEnviar(
           pago,
-          seleccionadas.map((l) => ({ plataforma: l.plataforma, correo: l.correo, valor: l.valor, fecha: l.fechaNueva }))
+          seleccionadas.map((l) => ({ plataforma: l.plataforma, correo: l.correo, valor: l.valor, fecha: l.fechaNueva })),
+          montoSugerido
         ),
       }),
     })
